@@ -20,15 +20,17 @@ object Config {
         BYPASS_VERIFICATION,
         BYPASS_RESOURCE_ARSC_RESTRICTIONS,
         BYPASS_DIGEST,
+        BYPASS_EXACT_SIGNATURE_MATCH,
         USE_PREVIOUS_SIGNATURES,
         ALLOW_HIDDEN_APIS_FOR_SYSTEM_APPS,
         BYPASS_SHARED_USER,
+        DISABLE_VERIFICATION_AGENT,
         BYPASS_BLOCK
     )
 
     fun printAllConfig() {
         allConfig.forEach {
-            XposedHelper.log("$it: ${prefs.getBoolean(it, false)}")
+            XposedHelper.log("${it}: ${prefs.getBoolean(it, false)}")
         }
     }
 
