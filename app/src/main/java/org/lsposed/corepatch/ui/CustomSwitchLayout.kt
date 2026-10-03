@@ -1,86 +1,56 @@
 package org.lsposed.corepatch.ui
 
 import android.content.Context
-import android.util.TypedValue
+import android.graphics.Typeface
+import android.view.Gravity
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.widget.Switch
+import android.widget.LinearLayout
 import android.widget.TextView
 
-class CustomSwitchLayout(context: Context) : CustomViewGroup(context) {
+class CustomSwitchLayout(context: Context) : LinearLayout(context) {
+    private val palette = UiPalette.from(context)
 
     val titleView = TextView(context).apply {
-        setTextAppearance(android.R.style.TextAppearance_Medium)
-        layoutParams = MarginLayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-            topMargin = 8.dp
-            leftMargin = 16.dp
-            rightMargin = 16.dp
-        }
-        this@CustomSwitchLayout.addView(this)
-    }
-    val subtitleView = TextView(context).apply {
-        layoutParams = MarginLayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-            leftMargin = 16.dp
-            bottomMargin = 8.dp
-            rightMargin = 16.dp
-        }
-        this@CustomSwitchLayout.addView(this)
-    }
-    val switchView = Switch(context).apply {
-        layoutParams = MarginLayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-            leftMargin = 8.dp
-            rightMargin = 8.dp
-        }
-        this@CustomSwitchLayout.addView(this)
+        setTextColor(palette.onSurface)
+        setTextSize(16f)
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
+    val subtitleView = TextView(context).apply {
+        setTextColor(palette.onSurfaceVariant)
+        setTextSize(13f)
+        setLineSpacing(0f, 1.08f)
+        setPadding(0, 4.dp, 0, 0)
+    }
+
+    val switchView = ExpressiveSwitch(context)
+
     init {
-        val outValue = TypedValue()
-        context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-        setBackgroundResource(outValue.resourceId)
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = 82.dp
+        setPadding(18.dp, 15.dp, 16.dp, 15.dp)
+        background = palette.rippleBackground(
+            palette.surfaceContainer,
+            26.dp.toFloat(),
+        )
+
+        val textColumn = LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(titleView, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(subtitleView, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        }
+
+        addView(textColumn, LayoutParams(0, WRAP_CONTENT, 1f).apply {
+            marginEnd = 16.dp
+        })
+        addView(switchView, LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+
         setOnClickListener { switchView.toggle() }
     }
 
     fun setOnCheckListener(listener: (Boolean) -> Unit) {
-        switchView.setOnCheckedChangeListener { _, isChecked ->
-            listener(isChecked)
-        }
+        switchView.setOnCheckedChangeListener(listener)
     }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        switchView.measure(
-            measuredWidth.toAtMostMeasureSpec(), measuredHeight.toAtMostMeasureSpec()
-        )
-        val titleWidth =
-            measuredWidth - switchView.measuredWidth - switchView.marginStart - switchView.marginEnd - titleView.marginStart - titleView.marginEnd
-
-        titleView.measure(
-            titleWidth.toExactlyMeasureSpec(), titleView.defaultHeightMeasureSpec(this)
-        )
-        subtitleView.measure(
-            titleWidth.toExactlyMeasureSpec(), subtitleView.defaultHeightMeasureSpec(this)
-        )
-
-        val totalHeight =
-            (titleView.marginTop + titleView.measuredHeight + subtitleView.measuredHeight + subtitleView.marginBottom).coerceAtLeast(
-                switchView.measuredHeight
-            )
-
-        setMeasuredDimension(measuredWidth, totalHeight)
-    }
-
-    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        val titleY = if (subtitleView.text.isNullOrEmpty()) {
-            (height / 2) - (titleView.measuredHeight / 2)
-        } else {
-            titleView.marginTop
-        }
-        titleView.autoLayout(titleView.marginStart, titleY)
-        subtitleView.autoLayout(titleView.marginStart, titleView.bottom)
-        switchView.autoLayout(
-            this@CustomSwitchLayout.measuredWidth - switchView.marginStart - switchView.measuredWidth,
-            (height / 2) - (switchView.measuredHeight / 2)
-        )
-    }
-
 }
