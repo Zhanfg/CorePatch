@@ -26,6 +26,8 @@ object ApkSignatureVerifierHook : BaseHook() {
         val apkSignatureVerifierClazz =
             hostClassLoader.loadClass("android.util.apk.ApkSignatureVerifier")
 
+        installVerifyFullBypass(apkSignatureVerifierClazz)
+
         val signingDetailsClazz =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 hostClassLoader.loadClass("android.content.pm.SigningDetails")
@@ -239,6 +241,34 @@ object ApkSignatureVerifierHook : BaseHook() {
             hookBefore(getMinimumSignatureSchemeVersionForTargetSdkMethod) { callback ->
                 if (Config.isBypassVerificationEnabled()) {
                     callback.returnAndSkip(0)
+                }
+            }
+        }
+    }
+
+    /**
+     * Android 17 adds newer signing paths (including v3.2) behind the same verifier stack.
+     * Instead of hard-coding individual block IDs, force certificate-only collection when the
+     * verification bypass is enabled. This keeps signer/lineage parsing intact while skipping
+     * full APK content-integrity verification for v2/v3/v3.1/v3.2/v4 paths.
+     */
+    private fun installVerifyFullBypass(apkSignatureVerifierClazz: Class<*>) {
+        val candidates = listOf(
+            "verifySignatures",
+            "verifySignaturesInternal",
+            "verifyV2Signature",
+            "verifyV3Signature",
+            "verifyV4Signature",
+        )
+
+        candidates.forEach { methodName ->
+            HookResolver.findMethods(apkSignatureVerifierClazz, methodName) { method ->
+                method.parameterTypes.lastOrNull() == Boolean::class.javaPrimitiveType
+            }.forEach { method ->
+                hookBefore(method) { callback ->
+                    if (!Config.isBypassVerificationEnabled()) return@hookBefore
+                    if (callback.args.isEmpty()) return@hookBefore
+                    callback.args[callback.args.lastIndex] = false
                 }
             }
         }
