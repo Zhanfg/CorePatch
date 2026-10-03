@@ -11,6 +11,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.ScrollView
@@ -66,7 +67,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(20.dp, 18.dp, 20.dp, 40.dp)
         }
-        scroll.addView(content, ScrollView.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        scroll.addView(content, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
         content.addView(buildTopBar(), linearParams(bottom = 22.dp))
         content.addView(buildStatusCard(active), linearParams(bottom = 26.dp))
