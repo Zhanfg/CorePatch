@@ -1,8 +1,18 @@
 <resources>
     <string name="app_name">Core Patch N</string>
     <string name="module_description">Package manager service modifications</string>
+    <string name="app_subtitle">v%1$s · Android %2$s · libxposed API 102</string>
+    <string name="more_options">More options</string>
+    <string name="module_active">Module active</string>
+    <string name="module_active_summary">System scope connected · Android 17 ready</string>
+    <string name="module_inactive">Module inactive</string>
+    <string name="module_inactive_summary">Enable Core Patch N for the System Framework scope.</string>
+    <string name="hot_reload_badge">HOT RELOAD</string>
+    <string name="section_installation">INSTALLATION</string>
+    <string name="section_signature">SIGNATURE &amp; IDENTITY</string>
+    <string name="section_system">SYSTEM INTEGRATION</string>
     <string name="xposed_service_unavailable">Unable to connect to Xposed service</string>
-    <string name="xposed_service_unavailable_summary">Make sure the Xposed framework is running and this module is enabled.</string>
+    <string name="xposed_service_unavailable_summary">Make sure the Xposed framework is running, this module is enabled, and the System Framework scope is selected.</string>
     <string name="bypass_downgrade">Bypass downgrade</string>
     <string name="bypass_verification">Bypass verification</string>
     <string name="bypass_digest">Bypass digest</string>
