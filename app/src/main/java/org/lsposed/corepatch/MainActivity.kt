@@ -185,7 +185,14 @@ class MainActivity : Activity() {
         scroll.post { scroll.requestApplyInsets() }
 
         content.addView(buildTopBar(), linearParams(bottom = 20.dp))
-        content.addView(buildStatusCard(active), linearParams(bottom = 24.dp))
+        content.addView(buildStatusCard(active), linearParams(bottom = 14.dp))
+
+        if (active) {
+            content.addView(
+                buildHotReloadDiagnosticCard(),
+                linearParams(bottom = 24.dp),
+            )
+        }
 
         if (!active) {
             content.addView(buildUnavailableCard(), linearParams())
@@ -332,6 +339,129 @@ class MainActivity : Activity() {
         }
 
         return card
+    }
+
+    private fun buildHotReloadDiagnosticCard(): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18.dp, 16.dp, 18.dp, 16.dp)
+            background = palette.roundedBackground(
+                palette.surfaceContainer,
+                24.dp.toFloat(),
+            )
+        }
+
+        card.addView(TextView(this).apply {
+            setText(R.string.hot_reload_diagnostics)
+            setTextColor(palette.onSurface)
+            setTextSize(16f)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+
+        val statusView = TextView(this).apply {
+            text = getString(
+                R.string.hot_reload_diagnostics_idle,
+                App.serviceApiVersion?.toString() ?: "?",
+            )
+            setTextColor(palette.onSurfaceVariant)
+            setTextSize(13f)
+            setLineSpacing(0f, 1.08f)
+            setPadding(0, 6.dp, 0, 12.dp)
+        }
+        card.addView(statusView)
+
+        val button = TextView(this).apply {
+            setText(R.string.hot_reload_test)
+            gravity = Gravity.CENTER
+            setTextColor(palette.onAccentContainer)
+            setTextSize(14f)
+            typeface = Typeface.DEFAULT_BOLD
+            minHeight = 44.dp
+            setPadding(14.dp, 10.dp, 14.dp, 10.dp)
+            background = palette.rippleBackground(
+                palette.accentContainer,
+                18.dp.toFloat(),
+            )
+        }
+        button.setOnClickListener {
+            runHotReloadDiagnostic(statusView, button)
+        }
+        card.addView(button, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+        return card
+    }
+
+    private fun runHotReloadDiagnostic(
+        statusView: TextView,
+        button: TextView,
+    ) {
+        val service = mService
+        if (service == null) {
+            statusView.setText(R.string.xposed_service_unavailable)
+            return
+        }
+
+        button.isEnabled = false
+        statusView.setText(R.string.hot_reload_checking)
+
+        Thread {
+            try {
+                val targets = service.getRunningTargets()
+                val systemTarget = targets.firstOrNull { target ->
+                    target.processName == "system_server" ||
+                        target.processName == "system"
+                }
+
+                if (systemTarget == null) {
+                    val seen = targets.joinToString(", ") { it.processName }
+                        .ifEmpty { "none" }
+                    runOnUiThread {
+                        statusView.text = getString(
+                            R.string.hot_reload_no_system_target,
+                            seen,
+                        )
+                        button.isEnabled = true
+                    }
+                    return@Thread
+                }
+
+                val before = getString(
+                    R.string.hot_reload_target_summary,
+                    systemTarget.processName,
+                    systemTarget.state.toString(),
+                    systemTarget.loadedVersionCode.toString(),
+                    BuildConfig.VERSION_CODE.toString(),
+                )
+                runOnUiThread {
+                    statusView.text = before
+                }
+
+                service.hotReloadModule(systemTarget, null) { target, result ->
+                    runOnUiThread {
+                        statusView.text = getString(
+                            R.string.hot_reload_result,
+                            target.processName,
+                            target.state.toString(),
+                            target.loadedVersionCode.toString(),
+                            BuildConfig.VERSION_CODE.toString(),
+                            result.status().toString(),
+                            result.message() ?: "—",
+                        )
+                        button.isEnabled = true
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.e("CorePatch", "Hot reload diagnostic failed", t)
+                runOnUiThread {
+                    statusView.text = getString(
+                        R.string.hot_reload_error,
+                        t.javaClass.simpleName,
+                        t.message ?: "no message",
+                    )
+                    button.isEnabled = true
+                }
+            }
+        }.start()
     }
 
     private fun buildUnavailableCard(): View {
