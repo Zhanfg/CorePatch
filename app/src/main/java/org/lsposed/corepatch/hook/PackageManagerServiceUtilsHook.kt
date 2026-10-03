@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Build
 import org.lsposed.corepatch.Config
 import org.lsposed.corepatch.XposedHelper
+import org.lsposed.corepatch.XposedHelper.hookAfter
 import org.lsposed.corepatch.XposedHelper.hookBefore
 import org.lsposed.corepatch.XposedHelper.hostClassLoader
 import org.lsposed.corepatch.XposedHelper.log
@@ -60,11 +61,29 @@ object PackageManagerServiceUtilsHook : BaseHook() {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // ensure verifySignatures success
-            // https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/services/core/java/com/android/server/pm/PackageManagerServiceUtils.java;l=621
-            val canJoinSharedUserIdMethod =
-                packageManagerServiceUtilsClazz.declaredMethods.first { m -> m.name == "canJoinSharedUserId" }
-            if (!XposedHelper.deoptimize(canJoinSharedUserIdMethod)) log("failed to deoptimize canJoinSharedUserId")
+            // Android 13+ funnels shared-user admission through canJoinSharedUserId.
+            // Keep the platform's normal decision first; only override a rejection when the
+            // explicit Core Patch shared-user bypass is enabled.
+            val canJoinSharedUserIdMethods = HookResolver.findMethods(
+                packageManagerServiceUtilsClazz,
+                "canJoinSharedUserId"
+            ) { method ->
+                method.returnType == Boolean::class.javaPrimitiveType
+            }
+
+            canJoinSharedUserIdMethods.forEach { method ->
+                if (!XposedHelper.deoptimize(method)) {
+                    log("failed to deoptimize canJoinSharedUserId")
+                }
+                hookAfter(method) { callback ->
+                    if (callback.result == false &&
+                        Config.isBypassDigestEnabled() &&
+                        Config.isBypassSharedUserEnabled()
+                    ) {
+                        callback.result = true
+                    }
+                }
+            }
         }
     }
 }
