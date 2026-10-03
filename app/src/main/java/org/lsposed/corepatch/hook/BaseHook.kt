@@ -23,7 +23,9 @@ open class BaseHook {
         if (inited) return
         inited = true
         XposedHelper.log("[$name] init: $name")
-        hookInternal()
+        XposedHelper.withHookNamespace(name) {
+            hookInternal()
+        }
         XposedHelper.log("[$name] init: $name done")
     }
 }

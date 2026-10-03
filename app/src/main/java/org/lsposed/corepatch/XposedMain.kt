@@ -8,6 +8,7 @@ import org.lsposed.corepatch.hook.ApkSignatureVerifierHook
 import org.lsposed.corepatch.hook.ApkSigningBlockUtilsHook
 import org.lsposed.corepatch.hook.ApplicationInfoHook
 import org.lsposed.corepatch.hook.AssetManagerHook
+import org.lsposed.corepatch.hook.DeveloperVerificationHook
 import org.lsposed.corepatch.hook.InstallPackageHelperHook
 import org.lsposed.corepatch.hook.KeySetManagerServiceHook
 import org.lsposed.corepatch.hook.MessageDigestHook
@@ -40,29 +41,39 @@ class XposedMain : XposedModule() {
     override fun onHotReloading(
         param: XposedModuleInterface.HotReloadingParam
     ): Boolean {
-        param.setSavedInstanceState("CorePatch:${BuildConfig.VERSION_NAME}")
+        if (!XposedHelper.isHotReloadReady()) {
+            XposedHelper.log("onHotReloading: current generation is not reload-ready")
+            return false
+        }
+
+        val loader = runCatching { XposedHelper.hostClassLoader }.getOrNull()
+        param.setSavedInstanceState(loader ?: "CorePatch:${BuildConfig.VERSION_NAME}")
         XposedHelper.log("onHotReloading: allowing API 102 hot reload")
         return true
     }
 
     override fun onHotReloaded(param: XposedModuleInterface.HotReloadedParam) {
-        // Do not call super: API 102 default behavior unhooks the previous generation.
-        // Core Patch replaces matching handles atomically instead.
         XposedHelper.setXposedModule(this)
 
         val oldHandles = param.oldHookHandles
-        val classLoader = oldHandles.asSequence()
-            .mapNotNull { it.executable.declaringClass.classLoader }
-            .firstOrNull()
+        val savedLoader = param.savedInstanceState as? ClassLoader
+        val classLoader = savedLoader
+            ?: oldHandles.asSequence()
+                .mapNotNull { runCatching { it.executable.declaringClass.classLoader }.getOrNull() }
+                .firstOrNull()
             ?: Thread.currentThread().contextClassLoader
             ?: ClassLoader.getSystemClassLoader()
 
         XposedHelper.setHostClassLoader(classLoader)
-        XposedHelper.log(
-            "onHotReloaded: ${oldHandles.size} old hooks, state=${param.savedInstanceState}"
-        )
+        XposedHelper.log("onHotReloaded: ${oldHandles.size} old hooks")
 
-        XposedHelper.beginHotReload(oldHandles)
+        if (!XposedHelper.beginHotReload(oldHandles)) {
+            XposedHelper.log("onHotReloaded: falling back to full unhook + rehook")
+            super.onHotReloaded(param)
+            installSystemHooks()
+            return
+        }
+
         try {
             installSystemHooks()
         } finally {
@@ -71,13 +82,15 @@ class XposedMain : XposedModule() {
     }
 
     private fun installSystemHooks() {
-        printAllConfig()
+        runCatching { printAllConfig() }
+            .onFailure { XposedHelper.log("failed to read config during hook install", it) }
 
         val hooks = listOf(
             ApkSignatureVerifierHook,
             ApkSigningBlockUtilsHook,
             ApplicationInfoHook,
             AssetManagerHook,
+            DeveloperVerificationHook,
             InstallPackageHelperHook,
             KeySetManagerServiceHook,
             MessageDigestHook,

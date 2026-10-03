@@ -13,6 +13,7 @@ object Config {
     const val ALLOW_HIDDEN_APIS_FOR_SYSTEM_APPS = "allow_hidden_apis_for_system_apps"
     const val BYPASS_SHARED_USER = "bypass_shared_user"
     const val DISABLE_VERIFICATION_AGENT = "disable_verification_agent"
+    const val BYPASS_DEVELOPER_VERIFICATION = "bypass_developer_verification"
     const val BYPASS_BLOCK = "bypass_block"
 
     private val allConfig = arrayOf(
@@ -25,6 +26,7 @@ object Config {
         ALLOW_HIDDEN_APIS_FOR_SYSTEM_APPS,
         BYPASS_SHARED_USER,
         DISABLE_VERIFICATION_AGENT,
+        BYPASS_DEVELOPER_VERIFICATION,
         BYPASS_BLOCK
     )
 
@@ -68,6 +70,10 @@ object Config {
 
     fun isDisableVerificationAgentEnabled(): Boolean {
         return prefs.getBoolean(DISABLE_VERIFICATION_AGENT, false)
+    }
+
+    fun isBypassDeveloperVerificationEnabled(): Boolean {
+        return prefs.getBoolean(BYPASS_DEVELOPER_VERIFICATION, false)
     }
 
     fun isBypassBlockEnabled(): Boolean {

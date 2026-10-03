@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.graphics.Typeface
+import android.util.Log
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -30,8 +32,17 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        reloadListener = { runOnUiThread { showContent() } }
-        showContent()
+        reloadListener = { runOnUiThread { renderSafely() } }
+        renderSafely()
+    }
+
+    private fun renderSafely() {
+        try {
+            showContent()
+        } catch (t: Throwable) {
+            Log.e("CorePatch", "UI render failed", t)
+            showFallbackError(t)
+        }
     }
 
     private fun showContent() {
@@ -39,8 +50,49 @@ class MainActivity : Activity() {
         configureSystemBars()
 
         val service = mService
-        val active = service != null && "system" in service.scope
+        val active = runCatching {
+            service != null && "system" in service.scope
+        }.getOrElse { throwable ->
+            App.serviceError =
+                "scope · ${throwable.javaClass.simpleName}: ${throwable.message ?: "no message"}"
+            false
+        }
         setContentView(buildScreen(active))
+    }
+
+    private fun showFallbackError(throwable: Throwable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(true)
+        }
+
+        val dark = (
+            resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK
+            ) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            fitsSystemWindows = true
+            setPadding(24.dp, 24.dp, 24.dp, 24.dp)
+            setBackgroundColor(if (dark) Color.rgb(20, 18, 24) else Color.WHITE)
+        }
+        root.addView(TextView(this).apply {
+            text = getString(R.string.ui_recovery_title)
+            setTextColor(if (dark) Color.WHITE else Color.BLACK)
+            setTextSize(22f)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        root.addView(TextView(this).apply {
+            text = getString(
+                R.string.ui_recovery_summary,
+                throwable.javaClass.simpleName,
+                throwable.message ?: "no message",
+            )
+            setTextColor(if (dark) 0xFFCAC4D0.toInt() else 0xFF49454F.toInt())
+            setTextSize(14f)
+            setPadding(0, 12.dp, 0, 0)
+        })
+        setContentView(root)
     }
 
     private fun configureSystemBars() {
@@ -299,6 +351,15 @@ class MainActivity : Activity() {
                 setTextSize(14f)
                 setPadding(0, 8.dp, 0, 0)
             })
+
+            App.serviceError?.let { error ->
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.xposed_service_error_detail, error)
+                    setTextColor(palette.error)
+                    setTextSize(12f)
+                    setPadding(0, 12.dp, 0, 0)
+                })
+            }
         }
     }
 
@@ -397,6 +458,12 @@ class MainActivity : Activity() {
                 getString(R.string.disable_verification_agent),
                 getString(R.string.disable_verification_agent_summary),
                 Config.DISABLE_VERIFICATION_AGENT,
+            ),
+            SwitchData(
+                getString(R.string.bypass_developer_verification),
+                getString(R.string.bypass_developer_verification_summary),
+                Config.BYPASS_DEVELOPER_VERIFICATION,
+                getString(R.string.bypass_developer_verification_warning),
             ),
         )
 

@@ -1,7 +1,20 @@
 <resources>
     <string name="app_name">核心修補 N</string>
+    <string name="app_subtitle">v%1$s · Android %2$s · libxposed API 102</string>
+    <string name="more_options">更多選項</string>
+    <string name="module_active">模組已啟用</string>
+    <string name="module_active_summary">System 範圍已連線 · Android 17 就緒</string>
+    <string name="module_inactive">模組未啟用</string>
+    <string name="module_inactive_summary">請為核心修補 N 啟用 System Framework 範圍。</string>
+    <string name="hot_reload_badge">熱重載</string>
+    <string name="section_installation">安裝控制</string>
+    <string name="section_signature">簽章與身分</string>
+    <string name="section_system">系統整合</string>
     <string name="xposed_service_unavailable">無法連線至 Xposed 服務</string>
-    <string name="xposed_service_unavailable_summary">請確認 Xposed 框架正在執行，並且已啟用本模組。</string>
+    <string name="xposed_service_unavailable_summary">請確認 Xposed 框架正在執行、已啟用本模組，並選擇 System Framework 範圍。</string>
+    <string name="xposed_service_error_detail">服務診斷：%1$s</string>
+    <string name="ui_recovery_title">核心修補 UI 安全恢復模式</string>
+    <string name="ui_recovery_summary">一般介面渲染失敗，已阻止閃退。\n%1$s：%2$s</string>
     <string name="bypass_downgrade">允許降版安裝應用程式</string>
     <string name="bypass_downgrade_summary">允許應用程式在安裝新版本的情況下直接覆蓋安裝舊版本</string>
     <string name="bypass_verification">停用套裝安裝程式簽名驗證</string>
@@ -21,7 +34,10 @@
     <string name="bypass_shared_user">略過共用使用者驗證</string>
     <string name="bypass_shared_user_summary">允許套件使用與共用使用者不同的簽章。</string>
     <string name="disable_verification_agent">停用套件驗證代理程式</string>
-    <string name="disable_verification_agent_summary">例如 Google Play 安全防護。</string>
+    <string name="disable_verification_agent_summary">舊版套件驗證機制，例如 Google Play 安全防護的傳統安裝驗證路徑。</string>
+    <string name="bypass_developer_verification">略過 Android 開發者身分驗證</string>
+    <string name="bypass_developer_verification_summary">略過 Android 16.1/17 安裝階段的開發者身分、套件名稱與簽章金鑰登記驗證。</string>
+    <string name="bypass_developer_verification_warning">這會停用 Android Developer Verifier 的安裝門檻，與 APK 簽章完整性驗證不同。僅對你明確信任的安裝檔啟用。</string>
     <string name="bypass_block">繞過黑名單</string>
     <string name="bypass_block_summary">繞過某些裝置如 Nothing Phone 上的黑名單</string>
     <string name="module_description">套件管理服務修改</string>

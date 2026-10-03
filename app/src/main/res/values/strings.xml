@@ -13,6 +13,9 @@
     <string name="section_system">SYSTEM INTEGRATION</string>
     <string name="xposed_service_unavailable">Unable to connect to Xposed service</string>
     <string name="xposed_service_unavailable_summary">Make sure the Xposed framework is running, this module is enabled, and the System Framework scope is selected.</string>
+    <string name="xposed_service_error_detail">Service diagnostic: %1$s</string>
+    <string name="ui_recovery_title">Core Patch UI recovery mode</string>
+    <string name="ui_recovery_summary">The normal interface failed to render.\n%1$s: %2$s</string>
     <string name="bypass_downgrade">Bypass downgrade</string>
     <string name="bypass_verification">Bypass verification</string>
     <string name="bypass_digest">Bypass digest</string>
@@ -33,6 +36,9 @@
     <string name="miui_usepresig_warn">Xiaomi/Redmi users must not enable this option; otherwise, the device may fail to boot.</string>
     <string name="bypass_shared_user_summary">Allow packages with a different shared-user signature.</string>
     <string name="disable_verification_agent_summary">For example, Google Play Protect.</string>
+    <string name="bypass_developer_verification">Bypass Android developer verification</string>
+    <string name="bypass_developer_verification_summary">Skip Android 16.1/17 developer identity and package registration verification during install.</string>
+    <string name="bypass_developer_verification_warning">This disables the Android Developer Verifier install gate. Enable it only for packages you intentionally trust.</string>
     <string name="bypass_block">Bypass installation blocklist</string>
     <string name="bypass_block_summary">Bypass blocklists on devices such as Nothing Phone.</string>
     <string name="hide_launcher_icon">Hide launcher icon</string>

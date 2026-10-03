@@ -23,17 +23,53 @@ object XposedHelper {
     private var hotReloadActive = false
     private var oldHookHandles: Map<String, XposedInterface.HookHandle> = emptyMap()
     private val seenHookIds = linkedSetOf<String>()
+    private val installedHookIds = linkedSetOf<String>()
+    private val currentHookNamespace = ThreadLocal<String?>()
 
-    fun beginHotReload(handles: List<XposedInterface.HookHandle>) {
+    fun <T> withHookNamespace(name: String, block: () -> T): T {
+        val previous = currentHookNamespace.get()
+        currentHookNamespace.set(name)
+        return try {
+            block()
+        } finally {
+            currentHookNamespace.set(previous)
+        }
+    }
+
+    fun isHotReloadReady(): Boolean = installedHookIds.isNotEmpty()
+
+    fun beginHotReload(handles: List<XposedInterface.HookHandle>): Boolean {
+        val grouped = linkedMapOf<String, MutableList<XposedInterface.HookHandle>>()
+        var unnamed = 0
+
+        handles.forEach { handle ->
+            val id = runCatching { handle.id }.getOrNull()
+            if (id.isNullOrEmpty()) {
+                unnamed++
+            } else {
+                grouped.getOrPut(id) { mutableListOf() } += handle
+            }
+        }
+
+        val duplicateIds = grouped.filterValues { it.size > 1 }.keys
+        val legacyIds = grouped.keys.filter {
+            it.startsWith("corepatch:before:") || it.startsWith("corepatch:after:")
+        }
+
+        if (unnamed != 0 || duplicateIds.isNotEmpty() || legacyIds.isNotEmpty()) {
+            log(
+                "hot reload: old generation is not atomically reusable; " +
+                    "unnamed=$unnamed duplicates=${duplicateIds.size} legacy=${legacyIds.size}"
+            )
+            return false
+        }
+
         hotReloadActive = true
         seenHookIds.clear()
-        oldHookHandles = handles
-            .mapNotNull { handle ->
-                val id = handle.id
-                if (id.isNullOrEmpty()) null else id to handle
-            }
-            .toMap()
-        log("hot reload: preparing ${handles.size} old hooks (${oldHookHandles.size} named)")
+        installedHookIds.clear()
+        oldHookHandles = grouped.mapValues { it.value.single() }
+        log("hot reload: preparing ${handles.size} reusable hooks")
+        return true
     }
 
     fun finishHotReload() {
@@ -46,6 +82,7 @@ object XposedHelper {
             "hot reload: replaced/retained ${seenHookIds.size} hooks, " +
                 "removed ${obsolete.size} obsolete hooks"
         )
+        installedHookIds += seenHookIds
         oldHookHandles = emptyMap()
         seenHookIds.clear()
         hotReloadActive = false
@@ -151,7 +188,9 @@ object XposedHelper {
             val oldHandle = oldHookHandles[id]
             if (oldHandle != null) {
                 try {
-                    return oldHandle.replaceHook(hooker)
+                    val replacement = oldHandle.replaceHook(hooker)
+                    installedHookIds += id
+                    return replacement
                 } catch (t: Throwable) {
                     log("hot reload: atomic replacement failed for $id; reinstalling", t)
                     runCatching { oldHandle.unhook() }
@@ -159,15 +198,21 @@ object XposedHelper {
             }
         }
 
-        return xposedModule.hook(member)
+        val handle = xposedModule.hook(member)
             .setId(id)
             .intercept(hooker)
+        installedHookIds += id
+        return handle
     }
 
     private fun buildHookId(member: Executable, phase: String): String {
+        val namespace = currentHookNamespace.get()
+            ?.takeIf { it.isNotBlank() }
+            ?: "AnonymousHook"
         val parameters = member.parameterTypes.joinToString(",") { it.name }
         val returnType = (member as? Method)?.returnType?.name ?: "void"
-        return "corepatch:$phase:${member.declaringClass.name}#${member.name}($parameters):$returnType"
+        return "corepatch:$namespace:$phase:" +
+            "${member.declaringClass.name}#${member.name}($parameters):$returnType"
     }
 
     fun log(message: String, throwable: Throwable? = null) {
