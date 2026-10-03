@@ -47,7 +47,6 @@ class MainActivity : Activity() {
 
     private fun showContent() {
         palette = UiPalette.from(this)
-        configureSystemBars()
 
         val service = mService
         val active = runCatching {
@@ -57,14 +56,12 @@ class MainActivity : Activity() {
                 "scope · ${throwable.javaClass.simpleName}: ${throwable.message ?: "no message"}"
             false
         }
+
         setContentView(buildScreen(active))
+        configureSystemBars()
     }
 
     private fun showFallbackError(throwable: Throwable) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(true)
-        }
-
         val dark = (
             resources.configuration.uiMode and
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK
@@ -93,19 +90,27 @@ class MainActivity : Activity() {
             setPadding(0, 12.dp, 0, 0)
         })
         setContentView(root)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching { window.setDecorFitsSystemWindows(true) }
+        }
     }
 
     private fun configureSystemBars() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(false)
-            window.insetsController?.let { controller ->
-                val lightFlags =
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                        WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                controller.setSystemBarsAppearance(
-                    if (palette.isDark) 0 else lightFlags,
-                    lightFlags,
-                )
+            runCatching {
+                window.setDecorFitsSystemWindows(false)
+                val controller = window.insetsController
+                if (controller != null) {
+                    val lightFlags =
+                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                    controller.setSystemBarsAppearance(
+                        if (palette.isDark) 0 else lightFlags,
+                        lightFlags,
+                    )
+                }
+            }.onFailure {
+                Log.w("CorePatch", "System bar controller unavailable", it)
             }
         } else {
             @Suppress("DEPRECATION")
