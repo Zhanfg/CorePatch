@@ -36,40 +36,18 @@ object XposedHelper {
         }
     }
 
-    fun isHotReloadReady(): Boolean = installedHookIds.isNotEmpty()
+    fun isHotReloadReady(): Boolean = true
 
     fun beginHotReload(handles: List<XposedInterface.HookHandle>): Boolean {
-        val grouped = linkedMapOf<String, MutableList<XposedInterface.HookHandle>>()
-        var unnamed = 0
-
-        handles.forEach { handle ->
-            val id = runCatching { handle.id }.getOrNull()
-            if (id.isNullOrEmpty()) {
-                unnamed++
-            } else {
-                grouped.getOrPut(id) { mutableListOf() } += handle
-            }
-        }
-
-        val duplicateIds = grouped.filterValues { it.size > 1 }.keys
-        val legacyIds = grouped.keys.filter {
-            it.startsWith("corepatch:before:") || it.startsWith("corepatch:after:")
-        }
-
-        if (unnamed != 0 || duplicateIds.isNotEmpty() || legacyIds.isNotEmpty()) {
-            log(
-                "hot reload: old generation is not atomically reusable; " +
-                    "unnamed=$unnamed duplicates=${duplicateIds.size} legacy=${legacyIds.size}"
-            )
-            return false
-        }
-
-        hotReloadActive = true
+        // ColorOS 17 / current libxposed runtime is more stable when the old generation
+        // is completely released before hooks are installed again. Returning false here
+        // selects XposedMain's existing full-unhook + full-rehook fallback.
+        hotReloadActive = false
+        oldHookHandles = emptyMap()
         seenHookIds.clear()
         installedHookIds.clear()
-        oldHookHandles = grouped.mapValues { it.value.single() }
-        log("hot reload: preparing ${handles.size} reusable hooks")
-        return true
+        log("hot reload: forcing safe full re-hook for ${handles.size} old hooks")
+        return false
     }
 
     fun finishHotReload() {
