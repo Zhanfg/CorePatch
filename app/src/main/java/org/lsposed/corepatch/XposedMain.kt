@@ -46,8 +46,8 @@ class XposedMain : XposedModule() {
             return false
         }
 
-        val loader = runCatching { XposedHelper.hostClassLoader }.getOrNull()
-        param.setSavedInstanceState(loader ?: "CorePatch:${BuildConfig.VERSION_NAME}")
+        // Only classloader-neutral state may cross module generations.
+        param.setSavedInstanceState("CorePatch:${BuildConfig.VERSION_NAME}")
         XposedHelper.log("onHotReloading: allowing API 102 hot reload")
         return true
     }
@@ -56,11 +56,9 @@ class XposedMain : XposedModule() {
         XposedHelper.setXposedModule(this)
 
         val oldHandles = param.oldHookHandles
-        val savedLoader = param.savedInstanceState as? ClassLoader
-        val classLoader = savedLoader
-            ?: oldHandles.asSequence()
-                .mapNotNull { runCatching { it.executable.declaringClass.classLoader }.getOrNull() }
-                .firstOrNull()
+        val classLoader = oldHandles.asSequence()
+            .mapNotNull { runCatching { it.executable.declaringClass.classLoader }.getOrNull() }
+            .firstOrNull()
             ?: Thread.currentThread().contextClassLoader
             ?: ClassLoader.getSystemClassLoader()
 
