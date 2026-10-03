@@ -28,8 +28,11 @@ object XposedHelper {
         hotReloadActive = true
         seenHookIds.clear()
         oldHookHandles = handles
-            .filter { it.id.isNotEmpty() }
-            .associateBy { it.id }
+            .mapNotNull { handle ->
+                val id = handle.id
+                if (id.isNullOrEmpty()) null else id to handle
+            }
+            .toMap()
         log("hot reload: preparing ${handles.size} old hooks (${oldHookHandles.size} named)")
     }
 
