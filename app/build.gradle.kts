@@ -22,8 +22,8 @@ configure<ApplicationExtension> {
         applicationId = "org.lsposed.corepatch"
         minSdk = 28
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.2.0-hotfix3"
+        versionCode = 9
+        versionName = "1.2.0-hotfix4"
     }
 
     signingConfigs {
