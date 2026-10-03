@@ -63,31 +63,48 @@ class ExpressiveSwitch(context: Context) : View(context) {
         val heightF = height.toFloat()
         track.set(0f, 0f, widthF, heightF)
 
+        val offTrack = UiPalette.blend(
+            palette.surfaceContainerHigh,
+            palette.onSurfaceVariant,
+            if (palette.isDark) 0.10f else 0.08f,
+        )
+
         paint.style = Paint.Style.FILL
         paint.color = UiPalette.blend(
-            palette.surfaceContainerHigh,
+            offTrack,
             palette.accent,
             progress,
         )
         canvas.drawRoundRect(track, heightF / 2f, heightF / 2f, paint)
 
-        if (progress < 0.5f) {
+        if (progress < 0.92f) {
+            val outlineAlpha =
+                (if (palette.isDark) 0.20f else 0.28f) * (1f - progress)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 1.dp.toFloat()
-            paint.color = palette.outline
+            paint.color = UiPalette.withAlpha(palette.outline, outlineAlpha)
             canvas.drawRoundRect(track, heightF / 2f, heightF / 2f, paint)
         }
 
-        val thumbRadius = 12.dp.toFloat()
+        val thumbRadius =
+            (10.dp + ((12.dp - 10.dp) * progress)).toFloat()
         val startX = 16.dp.toFloat()
         val endX = widthF - 16.dp
         val centerX = startX + (endX - startX) * progress
         val centerY = heightF / 2f
 
+        val offThumb = UiPalette.blend(
+            palette.surfaceContainerHigh,
+            palette.onSurfaceVariant,
+            if (palette.isDark) 0.30f else 0.26f,
+        )
+        val onThumb =
+            if (palette.isDark) 0xFF1D1B20.toInt() else 0xFFFFFFFF.toInt()
+
         paint.style = Paint.Style.FILL
         paint.color = UiPalette.blend(
-            palette.onSurfaceVariant,
-            if (palette.isDark) 0xFF1D1B20.toInt() else 0xFFFFFFFF.toInt(),
+            offThumb,
+            onThumb,
             progress,
         )
         canvas.drawCircle(centerX, centerY, thumbRadius, paint)

@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
@@ -42,18 +44,33 @@ class MainActivity : Activity() {
     }
 
     private fun configureSystemBars() {
-        window.statusBarColor = palette.background
-        window.navigationBarColor = palette.background
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            window.insetsController?.let { controller ->
+                val lightFlags =
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                        WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                controller.setSystemBarsAppearance(
+                    if (palette.isDark) 0 else lightFlags,
+                    lightFlags,
+                )
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            run {
+                window.statusBarColor = palette.background
+                window.navigationBarColor = palette.background
 
-        var flags = 0
-        if (!palette.isDark) {
-            flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                var flags = 0
+                if (!palette.isDark) {
+                    flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                    }
+                }
+                window.decorView.systemUiVisibility = flags
             }
         }
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = flags
     }
 
     private fun buildScreen(active: Boolean): View {
@@ -63,14 +80,55 @@ class MainActivity : Activity() {
             setBackgroundColor(palette.background)
         }
 
+        val horizontalPadding = 20.dp
+        val designTopPadding = 16.dp
+        val designBottomPadding = 36.dp
+
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20.dp, 18.dp, 20.dp, 40.dp)
+            setPadding(
+                horizontalPadding,
+                designTopPadding,
+                horizontalPadding,
+                designBottomPadding,
+            )
         }
         scroll.addView(content, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
-        content.addView(buildTopBar(), linearParams(bottom = 22.dp))
-        content.addView(buildStatusCard(active), linearParams(bottom = 26.dp))
+        scroll.setOnApplyWindowInsetsListener { _, insets ->
+            val topInset: Int
+            val bottomInset: Int
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val systemBars = insets.getInsets(WindowInsets.Type.systemBars())
+                val cutout = insets.getInsets(WindowInsets.Type.displayCutout())
+                topInset = maxOf(systemBars.top, cutout.top)
+                bottomInset = maxOf(systemBars.bottom, cutout.bottom)
+            } else {
+                @Suppress("DEPRECATION")
+                topInset = maxOf(
+                    insets.systemWindowInsetTop,
+                    insets.displayCutout?.safeInsetTop ?: 0,
+                )
+                @Suppress("DEPRECATION")
+                bottomInset = maxOf(
+                    insets.systemWindowInsetBottom,
+                    insets.displayCutout?.safeInsetBottom ?: 0,
+                )
+            }
+
+            content.setPadding(
+                horizontalPadding,
+                topInset + designTopPadding,
+                horizontalPadding,
+                bottomInset + designBottomPadding,
+            )
+            insets
+        }
+        scroll.post { scroll.requestApplyInsets() }
+
+        content.addView(buildTopBar(), linearParams(bottom = 20.dp))
+        content.addView(buildStatusCard(active), linearParams(bottom = 24.dp))
 
         if (!active) {
             content.addView(buildUnavailableCard(), linearParams())
@@ -81,8 +139,8 @@ class MainActivity : Activity() {
             content.addView(
                 buildSectionHeader(group.first),
                 linearParams(
-                    top = if (index == 0) 0 else 14.dp,
-                    bottom = 10.dp,
+                    top = if (index == 0) 0 else 12.dp,
+                    bottom = 9.dp,
                 )
             )
 
@@ -90,7 +148,7 @@ class MainActivity : Activity() {
                 content.addView(
                     buildSwitchRow(item),
                     linearParams(
-                        bottom = if (itemIndex == group.second.lastIndex) 4.dp else 8.dp
+                        bottom = if (itemIndex == group.second.lastIndex) 3.dp else 7.dp
                     )
                 )
             }
@@ -112,7 +170,7 @@ class MainActivity : Activity() {
         titles.addView(TextView(this).apply {
             text = getString(R.string.app_name)
             setTextColor(palette.onSurface)
-            setTextSize(30f)
+            setTextSize(28f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = -0.02f
         })
