@@ -20,6 +20,34 @@ object XposedHelper {
     val prefs by lazy { xposedModule.getRemotePreferences("conf") }
     private val fieldOffsetValue by lazy { getFieldOffsetOffset() }
 
+    private var hotReloadActive = false
+    private var oldHookHandles: Map<String, XposedInterface.HookHandle> = emptyMap()
+    private val seenHookIds = linkedSetOf<String>()
+
+    fun beginHotReload(handles: List<XposedInterface.HookHandle>) {
+        hotReloadActive = true
+        seenHookIds.clear()
+        oldHookHandles = handles
+            .filter { it.id.isNotEmpty() }
+            .associateBy { it.id }
+        log("hot reload: preparing ${handles.size} old hooks (${oldHookHandles.size} named)")
+    }
+
+    fun finishHotReload() {
+        val obsolete = oldHookHandles.filterKeys { it !in seenHookIds }
+        obsolete.forEach { (id, handle) ->
+            runCatching { handle.unhook() }
+                .onFailure { log("hot reload: failed to remove obsolete hook $id", it) }
+        }
+        log(
+            "hot reload: replaced/retained ${seenHookIds.size} hooks, " +
+                "removed ${obsolete.size} obsolete hooks"
+        )
+        oldHookHandles = emptyMap()
+        seenHookIds.clear()
+        hotReloadActive = false
+    }
+
     fun setXposedModule(module: XposedModule) {
         xposedModule = module
     }
@@ -91,13 +119,52 @@ object XposedHelper {
     fun hookBefore(
         member: Executable, callback: BeforeCallback
     ): XposedInterface.HookHandle {
-        return xposedModule.hook(member).intercept(CustomHooker(beforeCallback = callback))
+        return installOrReplaceHook(
+            member,
+            "before",
+            CustomHooker(beforeCallback = callback)
+        )
     }
 
     fun hookAfter(
         executable: Executable, callback: AfterCallback
     ): XposedInterface.HookHandle {
-        return xposedModule.hook(executable).intercept(CustomHooker(afterCallback = callback))
+        return installOrReplaceHook(
+            executable,
+            "after",
+            CustomHooker(afterCallback = callback)
+        )
+    }
+
+    private fun installOrReplaceHook(
+        member: Executable,
+        phase: String,
+        hooker: XposedInterface.Hooker,
+    ): XposedInterface.HookHandle {
+        val id = buildHookId(member, phase)
+
+        if (hotReloadActive) {
+            seenHookIds += id
+            val oldHandle = oldHookHandles[id]
+            if (oldHandle != null) {
+                try {
+                    return oldHandle.replaceHook(hooker)
+                } catch (t: Throwable) {
+                    log("hot reload: atomic replacement failed for $id; reinstalling", t)
+                    runCatching { oldHandle.unhook() }
+                }
+            }
+        }
+
+        return xposedModule.hook(member)
+            .setId(id)
+            .intercept(hooker)
+    }
+
+    private fun buildHookId(member: Executable, phase: String): String {
+        val parameters = member.parameterTypes.joinToString(",") { it.name }
+        val returnType = (member as? Method)?.returnType?.name ?: "void"
+        return "corepatch:$phase:${member.declaringClass.name}#${member.name}($parameters):$returnType"
     }
 
     fun log(message: String, throwable: Throwable? = null) {
