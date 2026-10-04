@@ -98,7 +98,7 @@ def read_len_prefixed(buf: memoryview, pos: int) -> tuple[memoryview, int]:
     return buf[pos : pos + length], pos + length
 
 
-def idsig_extra_block_ids(path: Path) -> list[int]:
+def idsig_layout(path: Path) -> tuple[list[int], int]:
     data = memoryview(path.read_bytes())
     if len(data) < 4:
         raise ValueError("truncated idsig")
@@ -106,8 +106,12 @@ def idsig_extra_block_ids(path: Path) -> list[int]:
     pos = 4
     _, pos = read_len_prefixed(data, pos)  # hashingInfo
     signing_infos_raw, pos = read_len_prefixed(data, pos)
-    if pos != len(data):
-        raise ValueError("unexpected trailing bytes after idsig")
+
+    # The .idsig artifact may append the fs-verity / IncFS Merkle tree after the
+    # V4Signature header. Android's V4Signature.readFrom() intentionally reads
+    # only version + hashingInfo + signingInfos and leaves the remaining bytes
+    # to the integrity layer.
+    merkle_tree_bytes = len(data) - pos
 
     buf = signing_infos_raw
     p = 0
@@ -131,7 +135,7 @@ def idsig_extra_block_ids(path: Path) -> list[int]:
 
     if version != 2:
         raise ValueError(f"unexpected v4 idsig version {version}")
-    return ids
+    return ids, merkle_tree_bytes
 
 
 def parse_int(value: str) -> int:
@@ -147,7 +151,10 @@ def main() -> int:
     args = ap.parse_args()
 
     apk_ids = apk_signing_block_ids(args.apk)
-    idsig_ids = idsig_extra_block_ids(args.idsig) if args.idsig else []
+    idsig_ids: list[int] = []
+    merkle_tree_bytes = 0
+    if args.idsig:
+        idsig_ids, merkle_tree_bytes = idsig_layout(args.idsig)
 
     report = {
         "apk": str(args.apk),
@@ -155,6 +162,7 @@ def main() -> int:
         "apk_schemes": [LABELS.get(x, "other") for x in apk_ids],
         "idsig": str(args.idsig) if args.idsig else None,
         "idsig_extra_block_ids": [f"0x{x:08x}" for x in idsig_ids],
+        "idsig_merkle_tree_bytes": merkle_tree_bytes if args.idsig else None,
     }
     print(json.dumps(report, indent=2))
 
