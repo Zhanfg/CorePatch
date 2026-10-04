@@ -6,6 +6,10 @@ import org.lsposed.corepatch.XposedHelper.prefs
 object Config {
     const val BYPASS_DOWNGRADE = "downgrade"
     const val BYPASS_VERIFICATION = "bypass_verification"
+    const val DISABLE_JAR_VERIFIER = "disable_jar_verifier"
+    const val DISABLE_MESSAGE_DIGEST = "disable_message_digest"
+    const val BYPASS_MIN_SIGNATURE_VERSION = "bypass_min_signature_version"
+    const val BYPASS_V1_SIGNATURE_ERRORS = "bypass_v1_signature_errors"
     const val BYPASS_RESOURCE_ARSC_RESTRICTIONS = "bypass_resource_arsc_restrictions"
     const val BYPASS_DIGEST = "bypass_digest"
     const val BYPASS_EXACT_SIGNATURE_MATCH = "bypass_exact_sig_match"
@@ -21,6 +25,10 @@ object Config {
     private val allConfig = arrayOf(
         BYPASS_DOWNGRADE,
         BYPASS_VERIFICATION,
+        DISABLE_JAR_VERIFIER,
+        DISABLE_MESSAGE_DIGEST,
+        BYPASS_MIN_SIGNATURE_VERSION,
+        BYPASS_V1_SIGNATURE_ERRORS,
         BYPASS_RESOURCE_ARSC_RESTRICTIONS,
         BYPASS_DIGEST,
         BYPASS_EXACT_SIGNATURE_MATCH,
@@ -46,6 +54,22 @@ object Config {
 
     fun isBypassVerificationEnabled(): Boolean {
         return prefs.getBoolean(BYPASS_VERIFICATION, false)
+    }
+
+    fun isJarVerificationDisabled(): Boolean {
+        return isBypassVerificationEnabled() || prefs.getBoolean(DISABLE_JAR_VERIFIER, false)
+    }
+
+    fun isMessageDigestDisabled(): Boolean {
+        return isBypassVerificationEnabled() || prefs.getBoolean(DISABLE_MESSAGE_DIGEST, false)
+    }
+
+    fun isMinSignatureVersionBypassed(): Boolean {
+        return isBypassVerificationEnabled() || prefs.getBoolean(BYPASS_MIN_SIGNATURE_VERSION, false)
+    }
+
+    fun isV1SignatureErrorBypassed(): Boolean {
+        return isBypassVerificationEnabled() || prefs.getBoolean(BYPASS_V1_SIGNATURE_ERRORS, false)
     }
 
     fun isBypassResourceArscRestrictionsEnabled(): Boolean {
