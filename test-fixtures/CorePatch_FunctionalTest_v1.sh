@@ -8,7 +8,7 @@
 
 BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)"
 APK_DIR="$BASE_DIR/apks"
-STAGE="/data/local/tmp/corepatch-functional-test-$"
+STAGE="/data/local/tmp/corepatch-functional-test-$$"
 OUT="/sdcard/Download/CorePatch_FunctionalTest_v2_$(date +%Y%m%d_%H%M%S).txt"
 PKG="dev.axymorrsen.corepatch.test"
 SHARED_A="dev.axymorrsen.corepatch.shared.a"
