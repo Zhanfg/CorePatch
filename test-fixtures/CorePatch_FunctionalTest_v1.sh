@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# CorePatch Android 17 Functional Test Suite v1
+# CorePatch Android 17 Functional Test Suite v2
 # No arguments. Isolated packages only. Automatically cleans up.
 # Test packages:
 #   dev.axymorrsen.corepatch.test
@@ -8,7 +8,8 @@
 
 BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)"
 APK_DIR="$BASE_DIR/apks"
-OUT="/sdcard/Download/CorePatch_FunctionalTest_$(date +%Y%m%d_%H%M%S).txt"
+STAGE="/data/local/tmp/corepatch-functional-test-$"
+OUT="/sdcard/Download/CorePatch_FunctionalTest_v2_$(date +%Y%m%d_%H%M%S).txt"
 PKG="dev.axymorrsen.corepatch.test"
 SHARED_A="dev.axymorrsen.corepatch.shared.a"
 SHARED_B="dev.axymorrsen.corepatch.shared.b"
@@ -30,8 +31,35 @@ cleanup(){
   pm uninstall "$PKG" >/dev/null 2>&1
   pm uninstall "$SHARED_A" >/dev/null 2>&1
   pm uninstall "$SHARED_B" >/dev/null 2>&1
+  rm -rf "$STAGE" >/dev/null 2>&1
 }
 trap cleanup EXIT INT TERM
+
+stage_fixtures(){
+  rm -rf "$STAGE" >/dev/null 2>&1
+  mkdir -p "$STAGE" || return 1
+  chmod 0755 "$STAGE" 2>/dev/null
+
+  for F in \
+    base-v1-keyA.apk \
+    base-v2-keyA.apk \
+    diff-v3-keyB.apk \
+    tampered-v4-keyB.apk \
+    shared-a-keyA.apk \
+    shared-b-keyB.apk
+  do
+    cp "$APK_DIR/$F" "$STAGE/$F" || return 1
+    chmod 0644 "$STAGE/$F" 2>/dev/null
+  done
+
+  if command -v restorecon >/dev/null 2>&1; then
+    restorecon -RF "$STAGE" >/dev/null 2>&1 || true
+  fi
+
+  say "staging_dir=$STAGE"
+  ls -lZ "$STAGE" 2>/dev/null | tee -a "$OUT"
+  return 0
+}
 
 install_apk(){
   LABEL="$1"
@@ -55,7 +83,7 @@ install_apk(){
 }
 
 : > "$OUT"
-say "CorePatch Android 17 Functional Test Suite v1"
+say "CorePatch Android 17 Functional Test Suite v2"
 say "Generated: $(date)"
 say "Mode: isolated install matrix / no arguments"
 say "Report: $OUT"
@@ -81,40 +109,55 @@ do
 done
 [ "$FAIL" -eq 0 ] || exit 1
 
-cleanup
+section "[0.5] SELinux-safe staging"
+if stage_fixtures; then
+  pass "All fixtures staged under /data/local/tmp for system_server access."
+else
+  fail "Could not stage fixtures under /data/local/tmp."
+  say "VERDICT=TEST_INFRASTRUCTURE_FAILURE"
+  exit 2
+fi
+
+pm uninstall "$PKG" >/dev/null 2>&1
+pm uninstall "$SHARED_A" >/dev/null 2>&1
+pm uninstall "$SHARED_B" >/dev/null 2>&1
 SYS_BEFORE="$(pidof system_server 2>/dev/null | awk '{print $1}')"
 say "system_server_before=$SYS_BEFORE"
 
 section "[1] Baseline install"
-if install_apk "baseline v2 / key A" "$APK_DIR/base-v2-keyA.apk" 2; then
+if install_apk "baseline v2 / key A" "$STAGE/base-v2-keyA.apk" 2; then
   pass "Normal baseline install succeeded."
 else
-  fail "Baseline fixture could not be installed; stop interpreting later signature tests."
+  fail "Baseline fixture could not be installed."
+  say ""
+  say "Baseline installation failed before any CorePatch bypass behavior could be tested."
+  say "VERDICT=TEST_INFRASTRUCTURE_OR_BASELINE_FAILURE"
+  exit 3
 fi
 
 section "[2] Downgrade bypass"
-if install_apk "downgrade v2 -> v1 / same key A / no -d" "$APK_DIR/base-v1-keyA.apk" 1; then
+if install_apk "downgrade v2 -> v1 / same key A / no -d" "$STAGE/base-v1-keyA.apk" 1; then
   pass "Downgrade bypass is functionally working."
 else
   fail "Downgrade install was rejected. Check BYPASS_DOWNGRADE."
 fi
 
 section "[3] Restore baseline"
-if install_apk "restore v1 -> v2 / key A" "$APK_DIR/base-v2-keyA.apk" 2; then
+if install_apk "restore v1 -> v2 / key A" "$STAGE/base-v2-keyA.apk" 2; then
   pass "Baseline restored."
 else
   fail "Could not restore baseline v2."
 fi
 
 section "[4] Different-signature update"
-if install_apk "different signer v2/keyA -> v3/keyB" "$APK_DIR/diff-v3-keyB.apk" 3; then
+if install_apk "different signer v2/keyA -> v3/keyB" "$STAGE/diff-v3-keyB.apk" 3; then
   pass "Different-signature replacement is functionally working."
 else
   fail "Different-signature replacement was rejected. Check BYPASS_DIGEST / previous-signature path."
 fi
 
 section "[5] Tampered APK signature/integrity"
-if install_apk "tampered v4 / same key B before tamper" "$APK_DIR/tampered-v4-keyB.apk" 4; then
+if install_apk "tampered v4 / same key B before tamper" "$STAGE/tampered-v4-keyB.apk" 4; then
   pass "Tampered APK signature/integrity bypass is functionally working."
 else
   fail "Tampered APK was rejected. This points to incomplete scheme-aware v2/v3/v3.2 integrity recovery."
@@ -124,10 +167,10 @@ section "[6] sharedUser different-signature admission"
 pm uninstall "$SHARED_A" >/dev/null 2>&1
 pm uninstall "$SHARED_B" >/dev/null 2>&1
 
-RA="$(pm install "$APK_DIR/shared-a-keyA.apk" 2>&1)"
+RA="$(pm install "$STAGE/shared-a-keyA.apk" 2>&1)"
 RCA=$?
 say "shared A: $RA"
-RB="$(pm install "$APK_DIR/shared-b-keyB.apk" 2>&1)"
+RB="$(pm install "$STAGE/shared-b-keyB.apk" 2>&1)"
 RCB=$?
 say "shared B: $RB"
 
