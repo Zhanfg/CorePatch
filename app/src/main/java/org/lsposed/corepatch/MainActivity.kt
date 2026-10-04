@@ -692,6 +692,12 @@ class MainActivity : Activity() {
                 getString(R.string.pms_debug_command_summary),
                 Config.PMS_DEBUG_COMMAND,
             ),
+            SwitchData(
+                getString(R.string.disable_overlay_validation),
+                getString(R.string.disable_overlay_validation_summary),
+                Config.DISABLE_OVERLAY_VALIDATION,
+                getString(R.string.disable_overlay_validation_warning),
+            ),
         )
 
         return listOf(
