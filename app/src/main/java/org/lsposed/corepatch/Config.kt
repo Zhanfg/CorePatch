@@ -14,6 +14,7 @@ object Config {
     const val BYPASS_SHARED_USER = "bypass_shared_user"
     const val DISABLE_VERIFICATION_AGENT = "disable_verification_agent"
     const val BYPASS_DEVELOPER_VERIFICATION = "bypass_developer_verification"
+    const val PMS_DEBUG_COMMAND = "pms_debug_command"
     const val BYPASS_BLOCK = "bypass_block"
 
     private val allConfig = arrayOf(
@@ -27,6 +28,7 @@ object Config {
         BYPASS_SHARED_USER,
         DISABLE_VERIFICATION_AGENT,
         BYPASS_DEVELOPER_VERIFICATION,
+        PMS_DEBUG_COMMAND,
         BYPASS_BLOCK
     )
 
@@ -74,6 +76,10 @@ object Config {
 
     fun isBypassDeveloperVerificationEnabled(): Boolean {
         return prefs.getBoolean(BYPASS_DEVELOPER_VERIFICATION, false)
+    }
+
+    fun isPmsDebugCommandEnabled(): Boolean {
+        return prefs.getBoolean(PMS_DEBUG_COMMAND, false)
     }
 
     fun isBypassBlockEnabled(): Boolean {
