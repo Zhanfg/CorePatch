@@ -52,6 +52,9 @@
     <string name="bypass_developer_verification_warning">这会关闭 Android Developer Verifier 的安装门槛，与 APK 签名完整性验证不同。仅对你明确信任的安装包启用。</string>
     <string name="pms_debug_command">启用 PMS 调试命令</string>
     <string name="pms_debug_command_summary">增加 pm pms package/uid/shareduser 命令，可直接查看签名方案、证书摘要、UID、共享用户和安装来源。</string>
+    <string name="disable_overlay_validation">禁用 Overlay 验证</string>
+    <string name="disable_overlay_validation_summary">跳过 Android 17 PackageManager 安装阶段的 RRO Overlay 合法性检查。</string>
+    <string name="disable_overlay_validation_warning">这里只绕过 PackageManager 的安装阶段校验；OverlayManager/idmap 后续策略仍可能拒绝或忽略无效 Overlay。</string>
     <string name="bypass_block">绕过黑名单</string>
     <string name="bypass_block_summary">绕过某些设备如 Nothing Phone 上的黑名单</string>
     <string name="module_description">软件包管理服务修改</string>
