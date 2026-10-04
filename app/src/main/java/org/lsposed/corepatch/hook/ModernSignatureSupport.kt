@@ -37,6 +37,7 @@ object ModernSignatureSupport {
         )
 
         if (Build.VERSION.SDK_INT >= 37) {
+            installV3SelectionDiagnostics()
             installV4ToV3Fallback(apkSignatureVerifierClazz)
             logAndroid17Surface()
             installModernResultDiagnostics(apkSignatureVerifierClazz)
@@ -63,6 +64,36 @@ object ModernSignatureSupport {
             hookBefore(method) { callback ->
                 if (!Config.isBypassVerificationEnabled()) return@hookBefore
                 callback.args[1] = false
+            }
+        }
+    }
+
+    private fun installV3SelectionDiagnostics() {
+        val verifier = findClassIfExists("android.util.apk.ApkSignatureSchemeV3Verifier")
+            ?: return
+
+        HookResolver.findMethods(verifier, "verify") { method ->
+            method.parameterCount == 2 &&
+                method.parameterTypes[0].name == "java.io.RandomAccessFile" &&
+                method.parameterTypes[1] == Boolean::class.javaPrimitiveType
+        }.forEach { method ->
+            hookAfter(method) { callback ->
+                if (!BuildConfig.DEBUG || !Config.isBypassVerificationEnabled()) {
+                    return@hookAfter
+                }
+                if (callback.throwable != null) return@hookAfter
+                val signer = callback.result ?: return@hookAfter
+                val blockId = runCatching {
+                    signer.javaClass.getDeclaredField("blockId").apply {
+                        isAccessible = true
+                    }.getInt(signer)
+                }.getOrNull() ?: return@hookAfter
+
+                log(
+                    "[ModernSignature] v3-selected block=" + formatBlockId(blockId) +
+                        " label=" + labelV3Block(blockId) +
+                        " pqcHybrid=" + (readPqcHybridFlag()?.toString() ?: "unknown")
+                )
             }
         }
     }
@@ -285,6 +316,14 @@ object ModernSignatureSupport {
     private fun formatBlockId(value: Int): String =
         "0x" + value.toUInt().toString(16).padStart(8, '0')
 
+    private fun readPqcHybridFlag(): Boolean? {
+        val flags = findClassIfExists("android.security.Flags") ?: return null
+        val method = flags.declaredMethods.firstOrNull {
+            it.name == "apkPqcHybridSigning" && it.parameterCount == 0
+        }?.apply { isAccessible = true } ?: return null
+        return runCatching { method.invoke(null) as Boolean }.getOrNull()
+    }
+
     private fun logAndroid17Surface() {
         val v3 = findClassIfExists("android.util.apk.ApkSignatureSchemeV3Verifier")
         val v4 = findClassIfExists("android.util.apk.ApkSignatureSchemeV4Verifier")
@@ -310,6 +349,7 @@ object ModernSignatureSupport {
         log(
             "[ModernSignature] A17 surface: " +
                 "v3.2=${v32Block == APK_SIGNATURE_SCHEME_V32_BLOCK_ID && hasMinorVersion}, " +
+                "pqcHybrid=${readPqcHybridFlag()?.toString() ?: "unknown"}, " +
                 "v4.1=${hasV41Blocks && hasV41Selector}, " +
                 "v32Block=${v32Block?.let(::formatBlockId) ?: "missing"}"
         )
