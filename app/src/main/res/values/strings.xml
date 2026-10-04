@@ -12,6 +12,10 @@
     <string name="hot_reload_diagnostics_idle">Framework API: %1$s · not tested yet</string>
     <string name="hot_reload_test">Run Hot Reload test</string>
     <string name="hot_reload_checking">Reading API 102 targets…</string>
+    <string name="hot_reload_already_running">Hot Reload is already in progress…</string>
+    <string name="hot_reload_up_to_date">Target %1$s is already up to date · loaded=%2$s · current=%3$s. No reload is needed.</string>
+    <string name="hot_reload_failed_state">Target %1$s is in FAILED state · loaded=%2$s · current=%3$s. Refresh or restart the target before retrying instead of forcing another request.</string>
+    <string name="hot_reload_unknown_state">Unknown Hot Reload state: %1$s. Request cancelled.</string>
     <string name="hot_reload_no_system_target">No system_server target was returned. Targets: %1$s</string>
     <string name="hot_reload_target_summary">Target %1$s · state=%2$s · loaded=%3$s · current=%4$s\nSubmitting hot reload request…</string>
     <string name="hot_reload_result">Target %1$s · state=%2$s · loaded=%3$s · current=%4$s\nResult: %5$s\n%6$s</string>
