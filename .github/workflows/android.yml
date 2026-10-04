@@ -140,3 +140,155 @@ jobs:
       with:
         name: corepatch-functional-suite
         path: functional-suite
+
+  modern-signature-fixtures:
+    if: github.ref == 'refs/heads/android17'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout CorePatch
+      uses: actions/checkout@v4
+
+    - name: Checkout pinned apksig fixtures
+      uses: actions/checkout@v4
+      with:
+        repository: yaap/tools_apksig
+        ref: ab2516e657bbe66fe04539317a2a3f3697f16d22
+        path: external/tools_apksig
+        sparse-checkout: src/test/resources/com/android/apksig
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: 21
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Build CorePatch fixture APK
+      run: ./gradlew :test-fixtures:app:assembleV4Release
+
+    - name: Generate v4.1 rotation keys
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p modern-signatures
+        keytool -genkeypair -noprompt \
+          -keystore modern-signatures/key-old.jks -storepass android -keypass android \
+          -alias old -keyalg RSA -keysize 2048 -validity 10000 \
+          -dname "CN=CorePatch V4.1 Old,O=Axymorrsen Test,C=US"
+        keytool -genkeypair -noprompt \
+          -keystore modern-signatures/key-new.jks -storepass android -keypass android \
+          -alias new -keyalg RSA -keysize 2048 -validity 10000 \
+          -dname "CN=CorePatch V4.1 New,O=Axymorrsen Test,C=US"
+
+    - name: Build genuine v4.1 fixture
+      shell: bash
+      run: |
+        set -euo pipefail
+        BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+        APKSIGNER="$BUILD_TOOLS/apksigner"
+        BASE="$(find test-fixtures/app/build/outputs/apk/v4/release -type f -name '*.apk' | head -n1)"
+
+        "$APKSIGNER" rotate \
+          --out modern-signatures/lineage.bin \
+          --old-signer \
+          --ks modern-signatures/key-old.jks --ks-key-alias old \
+          --ks-pass pass:android --key-pass pass:android \
+          --set-installed-data true --set-shared-uid true --set-permission true \
+          --new-signer \
+          --ks modern-signatures/key-new.jks --ks-key-alias new \
+          --ks-pass pass:android --key-pass pass:android
+
+        "$APKSIGNER" sign \
+          --in "$BASE" \
+          --out modern-signatures/corepatch-v41.apk \
+          --min-sdk-version 28 \
+          --rotation-min-sdk-version 33 \
+          --lineage modern-signatures/lineage.bin \
+          --v1-signing-enabled false \
+          --v2-signing-enabled true \
+          --v3-signing-enabled true \
+          --v4-signing-enabled true \
+          --ks modern-signatures/key-old.jks --ks-key-alias old \
+          --ks-pass pass:android --key-pass pass:android \
+          --next-signer \
+          --ks modern-signatures/key-new.jks --ks-key-alias new \
+          --ks-pass pass:android --key-pass pass:android
+
+        test -s modern-signatures/corepatch-v41.apk.idsig
+        "$APKSIGNER" verify --verbose --print-certs \
+          --v4-signature-file modern-signatures/corepatch-v41.apk.idsig \
+          modern-signatures/corepatch-v41.apk \
+          | tee modern-signatures/v41-apksigner-report.txt
+
+        python3 tools/inspect_modern_signature.py \
+          modern-signatures/corepatch-v41.apk \
+          --idsig modern-signatures/corepatch-v41.apk.idsig \
+          --require-apk-block 0x1b93ad61 \
+          --require-idsig-block 0x1b93ad61 \
+          | tee modern-signatures/v41-layout.json
+
+    - name: Add pinned v3.2 hybrid fixtures
+      shell: bash
+      run: |
+        set -euo pipefail
+        SRC=external/tools_apksig/src/test/resources/com/android/apksig
+        cp "$SRC/v32-rsa-2048_2-mldsa-tgt-36-v3-rsa-2048.apk" \
+          modern-signatures/v32-valid.apk
+        cp "$SRC/v32-rsa-2048_3-mldsa-v31-rsa-2048_2-v3-rsa-2048.apk" \
+          modern-signatures/v32-v31-valid.apk
+
+        python3 tools/inspect_modern_signature.py \
+          modern-signatures/v32-valid.apk \
+          --require-apk-block 0x70e1c89f \
+          | tee modern-signatures/v32-layout.json
+
+        python3 tools/inspect_modern_signature.py \
+          modern-signatures/v32-v31-valid.apk \
+          --require-apk-block 0x70e1c89f \
+          --require-apk-block 0x1b93ad61 \
+          | tee modern-signatures/v32-v31-layout.json
+
+    - name: Create tampered modern-scheme probes
+      shell: bash
+      run: |
+        set -euo pipefail
+        printf 'CorePatch modern signature tamper probe %s\n' "$GITHUB_SHA" > /tmp/corepatch-modern-marker.txt
+
+        cp modern-signatures/v32-valid.apk modern-signatures/v32-tampered.apk
+        (cd /tmp && zip -q "$GITHUB_WORKSPACE/modern-signatures/v32-tampered.apk" corepatch-modern-marker.txt)
+        python3 tools/inspect_modern_signature.py \
+          modern-signatures/v32-tampered.apk \
+          --require-apk-block 0x70e1c89f \
+          | tee modern-signatures/v32-tampered-layout.json
+
+        cp modern-signatures/corepatch-v41.apk modern-signatures/corepatch-v41-tampered.apk
+        cp modern-signatures/corepatch-v41.apk.idsig modern-signatures/corepatch-v41-tampered.apk.idsig
+        (cd /tmp && zip -q "$GITHUB_WORKSPACE/modern-signatures/corepatch-v41-tampered.apk" corepatch-modern-marker.txt)
+        python3 tools/inspect_modern_signature.py \
+          modern-signatures/corepatch-v41-tampered.apk \
+          --idsig modern-signatures/corepatch-v41-tampered.apk.idsig \
+          --require-apk-block 0x1b93ad61 \
+          --require-idsig-block 0x1b93ad61 \
+          | tee modern-signatures/v41-tampered-layout.json
+
+    - name: Record provenance and checksums
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo 'CorePatch Android 17 modern signature fixtures'
+          echo 'apksig fixture source: yaap/tools_apksig@ab2516e657bbe66fe04539317a2a3f3697f16d22'
+          echo 'v3.2 fixtures are pinned upstream test resources.'
+          echo 'v4.1 fixture is generated from the CorePatch isolated test APK using a local two-key lineage.'
+          echo 'genN names elsewhere in this repository are app generations, not APK Signature Scheme versions.'
+          echo
+          sha256sum modern-signatures/*.apk modern-signatures/*.idsig
+        } | tee modern-signatures/README.txt
+
+        rm -f modern-signatures/key-old.jks modern-signatures/key-new.jks modern-signatures/lineage.bin
+
+    - name: Upload modern signature fixtures
+      uses: actions/upload-artifact@v4
+      with:
+        name: corepatch-modern-signature-fixtures
+        path: modern-signatures
