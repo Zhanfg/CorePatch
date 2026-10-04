@@ -121,7 +121,6 @@ object ModernSignatureSupport {
                                     " path=" + (apkPath ?: "<unknown>")
                             )
                         }
-                        }
                     }
                 }
             }
