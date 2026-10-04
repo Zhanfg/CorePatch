@@ -51,6 +51,8 @@
     <string name="bypass_developer_verification">Bypass Android developer verification</string>
     <string name="bypass_developer_verification_summary">Skip Android 16.1/17 developer identity and package registration verification during install.</string>
     <string name="bypass_developer_verification_warning">This disables the Android Developer Verifier install gate. Enable it only for packages you intentionally trust.</string>
+    <string name="pms_debug_command">Enable PMS diagnostic command</string>
+    <string name="pms_debug_command_summary">Adds pm pms package/uid/shareduser commands for signing, UID, shared-user and installer diagnostics.</string>
     <string name="bypass_block">Bypass installation blocklist</string>
     <string name="bypass_block_summary">Bypass blocklists on devices such as Nothing Phone.</string>
     <string name="hide_launcher_icon">Hide launcher icon</string>
