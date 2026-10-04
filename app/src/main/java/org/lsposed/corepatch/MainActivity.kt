@@ -687,6 +687,11 @@ class MainActivity : Activity() {
                 Config.BYPASS_DEVELOPER_VERIFICATION,
                 getString(R.string.bypass_developer_verification_warning),
             ),
+            SwitchData(
+                getString(R.string.pms_debug_command),
+                getString(R.string.pms_debug_command_summary),
+                Config.PMS_DEBUG_COMMAND,
+            ),
         )
 
         return listOf(
