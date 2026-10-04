@@ -15,6 +15,7 @@ object Config {
     const val DISABLE_VERIFICATION_AGENT = "disable_verification_agent"
     const val BYPASS_DEVELOPER_VERIFICATION = "bypass_developer_verification"
     const val PMS_DEBUG_COMMAND = "pms_debug_command"
+    const val DISABLE_OVERLAY_VALIDATION = "disable_overlay_validation"
     const val BYPASS_BLOCK = "bypass_block"
 
     private val allConfig = arrayOf(
@@ -29,6 +30,7 @@ object Config {
         DISABLE_VERIFICATION_AGENT,
         BYPASS_DEVELOPER_VERIFICATION,
         PMS_DEBUG_COMMAND,
+        DISABLE_OVERLAY_VALIDATION,
         BYPASS_BLOCK
     )
 
@@ -80,6 +82,10 @@ object Config {
 
     fun isPmsDebugCommandEnabled(): Boolean {
         return prefs.getBoolean(PMS_DEBUG_COMMAND, false)
+    }
+
+    fun isDisableOverlayValidationEnabled(): Boolean {
+        return prefs.getBoolean(DISABLE_OVERLAY_VALIDATION, false)
     }
 
     fun isBypassBlockEnabled(): Boolean {
