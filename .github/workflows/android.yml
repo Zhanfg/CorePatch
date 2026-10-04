@@ -132,8 +132,10 @@ jobs:
         rm functional-suite/apks/signed-gen4-keyB.apk
 
         cp test-fixtures/CorePatch_FunctionalTest_v3.sh functional-suite/
+        cp test-fixtures/CorePatch_OShinPortSmoke_v1.sh functional-suite/
         cp test-fixtures/README.md functional-suite/
         chmod +x functional-suite/CorePatch_FunctionalTest_v3.sh
+        chmod +x functional-suite/CorePatch_OShinPortSmoke_v1.sh
 
     - name: Upload functional test suite
       uses: actions/upload-artifact@v4
