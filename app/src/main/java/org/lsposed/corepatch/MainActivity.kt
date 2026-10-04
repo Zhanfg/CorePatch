@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.util.Log
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
@@ -29,6 +31,8 @@ import org.lsposed.corepatch.ui.dp
 
 class MainActivity : Activity() {
     private lateinit var palette: UiPalette
+    private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile private var hotReloadInFlight = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -397,10 +401,21 @@ class MainActivity : Activity() {
     ) {
         val service = mService
         if (service == null) {
-            statusView.setText(R.string.xposed_service_unavailable)
+            safeHotReloadUi(statusView, button) {
+                statusView.setText(R.string.xposed_service_unavailable)
+            }
             return
         }
 
+        if (hotReloadInFlight) {
+            safeHotReloadUi(statusView, button) {
+                statusView.setText(R.string.hot_reload_already_running)
+                button.isEnabled = false
+            }
+            return
+        }
+
+        hotReloadInFlight = true
         button.isEnabled = false
         statusView.setText(R.string.hot_reload_checking)
 
@@ -415,7 +430,8 @@ class MainActivity : Activity() {
                 if (systemTarget == null) {
                     val seen = targets.joinToString(", ") { it.processName }
                         .ifEmpty { "none" }
-                    runOnUiThread {
+                    hotReloadInFlight = false
+                    safeHotReloadUi(statusView, button) {
                         statusView.text = getString(
                             R.string.hot_reload_no_system_target,
                             seen,
@@ -425,19 +441,75 @@ class MainActivity : Activity() {
                     return@Thread
                 }
 
+                val state = systemTarget.state.toString()
                 val before = getString(
                     R.string.hot_reload_target_summary,
                     systemTarget.processName,
-                    systemTarget.state.toString(),
+                    state,
                     systemTarget.loadedVersionCode.toString(),
                     BuildConfig.VERSION_CODE.toString(),
                 )
-                runOnUiThread {
+
+                safeHotReloadUi(statusView, button) {
                     statusView.text = before
                 }
 
+                when (state) {
+                    "UP_TO_DATE" -> {
+                        hotReloadInFlight = false
+                        safeHotReloadUi(statusView, button) {
+                            statusView.text = getString(
+                                R.string.hot_reload_up_to_date,
+                                systemTarget.processName,
+                                systemTarget.loadedVersionCode.toString(),
+                                BuildConfig.VERSION_CODE.toString(),
+                            )
+                            button.isEnabled = true
+                        }
+                        return@Thread
+                    }
+
+                    "RELOADING" -> {
+                        hotReloadInFlight = false
+                        safeHotReloadUi(statusView, button) {
+                            statusView.setText(R.string.hot_reload_already_running)
+                            button.isEnabled = true
+                        }
+                        return@Thread
+                    }
+
+                    "FAILED" -> {
+                        hotReloadInFlight = false
+                        safeHotReloadUi(statusView, button) {
+                            statusView.text = getString(
+                                R.string.hot_reload_failed_state,
+                                systemTarget.processName,
+                                systemTarget.loadedVersionCode.toString(),
+                                BuildConfig.VERSION_CODE.toString(),
+                            )
+                            button.isEnabled = true
+                        }
+                        return@Thread
+                    }
+
+                    "STALE" -> Unit
+
+                    else -> {
+                        hotReloadInFlight = false
+                        safeHotReloadUi(statusView, button) {
+                            statusView.text = getString(
+                                R.string.hot_reload_unknown_state,
+                                state,
+                            )
+                            button.isEnabled = true
+                        }
+                        return@Thread
+                    }
+                }
+
                 service.hotReloadModule(systemTarget, null) { target, result ->
-                    runOnUiThread {
+                    hotReloadInFlight = false
+                    safeHotReloadUi(statusView, button) {
                         statusView.text = getString(
                             R.string.hot_reload_result,
                             target.processName,
@@ -451,8 +523,9 @@ class MainActivity : Activity() {
                     }
                 }
             } catch (t: Throwable) {
+                hotReloadInFlight = false
                 Log.e("CorePatch", "Hot reload diagnostic failed", t)
-                runOnUiThread {
+                safeHotReloadUi(statusView, button) {
                     statusView.text = getString(
                         R.string.hot_reload_error,
                         t.javaClass.simpleName,
@@ -462,6 +535,20 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun safeHotReloadUi(
+        statusView: TextView,
+        button: TextView,
+        action: () -> Unit,
+    ) {
+        mainHandler.post {
+            if (isFinishing || isDestroyed) return@post
+            if (!statusView.isAttachedToWindow || !button.isAttachedToWindow) return@post
+            runCatching(action).onFailure {
+                Log.e("CorePatch", "Hot reload UI callback failed", it)
+            }
+        }
     }
 
     private fun buildUnavailableCard(): View {
@@ -658,6 +745,15 @@ class MainActivity : Activity() {
         (get.invoke(null, "ro.miui.ui.version.code") as String).isNotEmpty()
     } catch (_: ReflectiveOperationException) {
         false
+    }
+
+    override fun onStart() {
+        super.onStart()
+        reloadListener = {
+            if (!hotReloadInFlight) {
+                runOnUiThread { renderSafely() }
+            }
+        }
     }
 
     override fun onStop() {
