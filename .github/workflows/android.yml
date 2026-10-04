@@ -252,18 +252,49 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        printf 'CorePatch modern signature tamper probe %s\n' "$GITHUB_SHA" > /tmp/corepatch-modern-marker.txt
 
-        cp modern-signatures/v32-valid.apk modern-signatures/v32-tampered.apk
-        (cd /tmp && zip -q "$GITHUB_WORKSPACE/modern-signatures/v32-tampered.apk" corepatch-modern-marker.txt)
+        tamper_zip_comment() {
+          local src="$1" dst="$2" marker="$3"
+          cp "$src" "$dst"
+          python3 - "$dst" "$marker" <<'PY'
+import struct
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+marker = sys.argv[2].encode("utf-8")
+data = bytearray(path.read_bytes())
+magic = b"PK\\x05\\x06"
+start = max(0, len(data) - (0xFFFF + 22))
+pos = data.rfind(magic, start)
+if pos < 0 or pos + 22 > len(data):
+    raise SystemExit("EOCD not found")
+old_len = struct.unpack_from("<H", data, pos + 20)[0]
+if pos + 22 + old_len != len(data):
+    raise SystemExit("EOCD comment does not reach EOF")
+if len(marker) > 0xFFFF:
+    raise SystemExit("marker too long")
+struct.pack_into("<H", data, pos + 20, len(marker))
+path.write_bytes(data[:pos + 22] + marker)
+PY
+        }
+
+        MARKER="CorePatch-modern-tamper-$GITHUB_SHA"
+
+        tamper_zip_comment \
+          modern-signatures/v32-valid.apk \
+          modern-signatures/v32-tampered.apk \
+          "$MARKER"
         python3 tools/inspect_modern_signature.py \
           modern-signatures/v32-tampered.apk \
           --require-apk-block 0x70e1c89f \
           | tee modern-signatures/v32-tampered-layout.json
 
-        cp modern-signatures/corepatch-v41.apk modern-signatures/corepatch-v41-tampered.apk
+        tamper_zip_comment \
+          modern-signatures/corepatch-v41.apk \
+          modern-signatures/corepatch-v41-tampered.apk \
+          "$MARKER"
         cp modern-signatures/corepatch-v41.apk.idsig modern-signatures/corepatch-v41-tampered.apk.idsig
-        (cd /tmp && zip -q "$GITHUB_WORKSPACE/modern-signatures/corepatch-v41-tampered.apk" corepatch-modern-marker.txt)
         python3 tools/inspect_modern_signature.py \
           modern-signatures/corepatch-v41-tampered.apk \
           --idsig modern-signatures/corepatch-v41-tampered.apk.idsig \
