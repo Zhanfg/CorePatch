@@ -20,3 +20,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Core Patch"
 include(":app")
+
+include(":test-fixtures:app")
+include(":test-fixtures:shared")

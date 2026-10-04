@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="dev.axymorrsen.corepatch.shared.uid">
+    <application
+        android:allowBackup="false"
+        android:hasCode="false"
+        android:label="CorePatch SharedUser Fixture"
+        android:supportsRtl="true" />
+</manifest>
