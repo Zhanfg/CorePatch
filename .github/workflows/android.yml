@@ -91,35 +91,49 @@ jobs:
         SA="$(find_one test-fixtures/shared/build/outputs/apk/a/release)"
         SB="$(find_one test-fixtures/shared/build/outputs/apk/b/release)"
 
+        SCHEME_REPORT="functional-suite/signing-schemes.txt"
+        : > "$SCHEME_REPORT"
+
         sign_apk() {
           local in="$1" ks="$2" alias="$3" out="$4"
           "$APKSIGNER" sign \
             --ks "$ks" --ks-key-alias "$alias" \
             --ks-pass pass:android --key-pass pass:android \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled false \
             --out "$out" "$in"
-          "$APKSIGNER" verify --verbose "$out"
+          {
+            echo "=== $(basename "$out") ==="
+            "$APKSIGNER" verify --verbose --print-certs "$out"
+            echo
+          } | tee -a "$SCHEME_REPORT"
         }
 
-        sign_apk "$V1" key-a.jks keyA functional-suite/apks/base-v1-keyA.apk
-        sign_apk "$V2" key-a.jks keyA functional-suite/apks/base-v2-keyA.apk
-        sign_apk "$V3" key-b.jks keyB functional-suite/apks/diff-v3-keyB.apk
-        sign_apk "$V4" key-b.jks keyB functional-suite/apks/signed-v4-keyB.apk
+        sign_apk "$V1" key-a.jks keyA functional-suite/apks/base-gen1-keyA.apk
+        sign_apk "$V2" key-a.jks keyA functional-suite/apks/base-gen2-keyA.apk
+        sign_apk "$V3" key-b.jks keyB functional-suite/apks/diff-gen3-keyB.apk
+        sign_apk "$V4" key-b.jks keyB functional-suite/apks/signed-gen4-keyB.apk
         sign_apk "$SA" key-a.jks keyA functional-suite/apks/shared-a-keyA.apk
         sign_apk "$SB" key-b.jks keyB functional-suite/apks/shared-b-keyB.apk
 
-        cp functional-suite/apks/signed-v4-keyB.apk functional-suite/apks/tampered-v4-keyB.apk
-        printf 'CorePatch tamper probe %s\n' "${GITHUB_SHA}" > /tmp/corepatch-tamper-marker.txt
-        (cd /tmp && zip -q "$GITHUB_WORKSPACE/functional-suite/apks/tampered-v4-keyB.apk" corepatch-tamper-marker.txt)
+        echo "NOTE: genN is the app version generation, not APK Signature Scheme vN." >> "$SCHEME_REPORT"
+        echo "Ordinary fixtures intentionally disable APK Signature Scheme v4; modern v3.2/v4.1 fixtures are built separately." >> "$SCHEME_REPORT"
 
-        if "$APKSIGNER" verify functional-suite/apks/tampered-v4-keyB.apk; then
+        cp functional-suite/apks/signed-gen4-keyB.apk functional-suite/apks/tampered-gen4-keyB.apk
+        printf 'CorePatch tamper probe %s\n' "${GITHUB_SHA}" > /tmp/corepatch-tamper-marker.txt
+        (cd /tmp && zip -q "$GITHUB_WORKSPACE/functional-suite/apks/tampered-gen4-keyB.apk" corepatch-tamper-marker.txt)
+
+        if "$APKSIGNER" verify functional-suite/apks/tampered-gen4-keyB.apk; then
           echo "Tampered APK unexpectedly verifies"
           exit 1
         fi
-        rm functional-suite/apks/signed-v4-keyB.apk
+        rm functional-suite/apks/signed-gen4-keyB.apk
 
-        cp test-fixtures/CorePatch_FunctionalTest_v1.sh functional-suite/
+        cp test-fixtures/CorePatch_FunctionalTest_v3.sh functional-suite/
         cp test-fixtures/README.md functional-suite/
-        chmod +x functional-suite/CorePatch_FunctionalTest_v1.sh
+        chmod +x functional-suite/CorePatch_FunctionalTest_v3.sh
 
     - name: Upload functional test suite
       uses: actions/upload-artifact@v4

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# CorePatch Android 17 Functional Test Suite v2
+# CorePatch Android 17 Functional Test Suite v3
 # No arguments. Isolated packages only. Automatically cleans up.
 # Test packages:
 #   dev.axymorrsen.corepatch.test
@@ -9,7 +9,7 @@
 BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)"
 APK_DIR="$BASE_DIR/apks"
 STAGE="/data/local/tmp/corepatch-functional-test-$$"
-OUT="/sdcard/Download/CorePatch_FunctionalTest_v2_$(date +%Y%m%d_%H%M%S).txt"
+OUT="/sdcard/Download/CorePatch_FunctionalTest_v3_$(date +%Y%m%d_%H%M%S).txt"
 PKG="dev.axymorrsen.corepatch.test"
 SHARED_A="dev.axymorrsen.corepatch.shared.a"
 SHARED_B="dev.axymorrsen.corepatch.shared.b"
@@ -41,10 +41,10 @@ stage_fixtures(){
   chmod 0755 "$STAGE" 2>/dev/null
 
   for F in \
-    base-v1-keyA.apk \
-    base-v2-keyA.apk \
-    diff-v3-keyB.apk \
-    tampered-v4-keyB.apk \
+    base-gen1-keyA.apk \
+    base-gen2-keyA.apk \
+    diff-gen3-keyB.apk \
+    tampered-gen4-keyB.apk \
     shared-a-keyA.apk \
     shared-b-keyB.apk
   do
@@ -83,7 +83,7 @@ install_apk(){
 }
 
 : > "$OUT"
-say "CorePatch Android 17 Functional Test Suite v2"
+say "CorePatch Android 17 Functional Test Suite v3"
 say "Generated: $(date)"
 say "Mode: isolated install matrix / no arguments"
 say "Report: $OUT"
@@ -101,7 +101,7 @@ say "  - Bypass Android developer verification"
 say ""
 say "LuckyTool-CorePatch or other competing PackageManager signature hooks should remain disabled."
 
-for F in   base-v1-keyA.apk   base-v2-keyA.apk   diff-v3-keyB.apk   tampered-v4-keyB.apk   shared-a-keyA.apk   shared-b-keyB.apk
+for F in   base-gen1-keyA.apk   base-gen2-keyA.apk   diff-gen3-keyB.apk   tampered-gen4-keyB.apk   shared-a-keyA.apk   shared-b-keyB.apk
 do
   if [ ! -f "$APK_DIR/$F" ]; then
     fail "Missing fixture: $APK_DIR/$F"
@@ -125,7 +125,7 @@ SYS_BEFORE="$(pidof system_server 2>/dev/null | awk '{print $1}')"
 say "system_server_before=$SYS_BEFORE"
 
 section "[1] Baseline install"
-if install_apk "baseline v2 / key A" "$STAGE/base-v2-keyA.apk" 2; then
+if install_apk "baseline generation 2 / key A" "$STAGE/base-gen2-keyA.apk" 2; then
   pass "Normal baseline install succeeded."
 else
   fail "Baseline fixture could not be installed."
@@ -136,31 +136,31 @@ else
 fi
 
 section "[2] Downgrade bypass"
-if install_apk "downgrade v2 -> v1 / same key A / no -d" "$STAGE/base-v1-keyA.apk" 1; then
+if install_apk "downgrade generation 2 -> 1 / same key A / no -d" "$STAGE/base-gen1-keyA.apk" 1; then
   pass "Downgrade bypass is functionally working."
 else
   fail "Downgrade install was rejected. Check BYPASS_DOWNGRADE."
 fi
 
 section "[3] Restore baseline"
-if install_apk "restore v1 -> v2 / key A" "$STAGE/base-v2-keyA.apk" 2; then
+if install_apk "restore generation 1 -> 2 / key A" "$STAGE/base-gen2-keyA.apk" 2; then
   pass "Baseline restored."
 else
   fail "Could not restore baseline v2."
 fi
 
 section "[4] Different-signature update"
-if install_apk "different signer v2/keyA -> v3/keyB" "$STAGE/diff-v3-keyB.apk" 3; then
+if install_apk "different signer generation 2/keyA -> 3/keyB" "$STAGE/diff-gen3-keyB.apk" 3; then
   pass "Different-signature replacement is functionally working."
 else
   fail "Different-signature replacement was rejected. Check BYPASS_DIGEST / previous-signature path."
 fi
 
 section "[5] Tampered APK signature/integrity"
-if install_apk "tampered v4 / same key B before tamper" "$STAGE/tampered-v4-keyB.apk" 4; then
+if install_apk "tampered generation 4 / same key B before tamper" "$STAGE/tampered-gen4-keyB.apk" 4; then
   pass "Tampered APK signature/integrity bypass is functionally working."
 else
-  fail "Tampered APK was rejected. This points to incomplete scheme-aware v2/v3/v3.2 integrity recovery."
+  fail "Tampered APK was rejected. This points to an incomplete integrity/signature bypass on the actual scheme recorded in signing-schemes.txt."
 fi
 
 section "[6] sharedUser different-signature admission"

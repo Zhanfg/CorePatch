@@ -27,6 +27,7 @@ object ApkSignatureVerifierHook : BaseHook() {
             hostClassLoader.loadClass("android.util.apk.ApkSignatureVerifier")
 
         installVerifyFullBypass(apkSignatureVerifierClazz)
+        ModernSignatureSupport.install(apkSignatureVerifierClazz)
 
         val signingDetailsClazz =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

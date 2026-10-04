@@ -15,7 +15,7 @@ Disable competing PackageManager/signature hooks such as LuckyTool-CorePatch.
 ## Run
 Keep all files in this folder structure and execute:
 
-`CorePatch_FunctionalTest_v1.sh`
+`CorePatch_FunctionalTest_v3.sh`
 
 No arguments are required.
 
@@ -25,3 +25,7 @@ The script only installs the dedicated packages:
 - dev.axymorrsen.corepatch.shared.b
 
 It removes them automatically at the end.
+
+## Fixture naming
+
+`gen1` / `gen2` / `gen3` / `gen4` are **application version generations**, not APK Signature Scheme versions. The CI artifact includes `signing-schemes.txt` with the actual schemes reported by `apksigner verify --verbose`.
