@@ -31,6 +31,14 @@
     <string name="bypass_downgrade_summary">允许应用在安装新版本的情况下直接覆盖安装旧版本</string>
     <string name="bypass_verification">禁用软件包管理器签名验证</string>
     <string name="bypass_verification_summary">关闭安装应用时的签名验证，可以安装被篡改的应用</string>
+    <string name="disable_jar_verifier">单独禁用 JAR 签名验证</string>
+    <string name="disable_jar_verifier_summary">仅绕过旧版 v1/JAR 摘要校验和签名降级保护；开启总签名验证绕过时也会自动包含此效果。</string>
+    <string name="disable_message_digest">单独禁用 MessageDigest 比较</string>
+    <string name="disable_message_digest_summary">仅让框架层 MessageDigest 相等比较通过；开启总签名验证绕过时也会自动包含此效果。</string>
+    <string name="bypass_min_signature_version">绕过最低签名方案版本</string>
+    <string name="bypass_min_signature_version_summary">允许安装 targetSdk 原本要求使用更高 APK 签名方案版本的应用；总签名验证绕过也包含此效果。</string>
+    <string name="bypass_v1_signature_errors">恢复 V1 签名错误 -103</string>
+    <string name="bypass_v1_signature_errors_summary">仅恢复旧版 V1 验证器产生的 INSTALL_PARSE_FAILED_NO_CERTIFICATES，无需开启完整签名验证绕过。</string>
     <string name="bypass_resource_arsc_restrictions">绕过 resources.arsc 对齐限制</string>
     <string name="bypass_resource_arsc_restrictions_summary">允许在 Android 11 及以上版本安装 resources.arsc 已压缩或未按 4 字节对齐的 APK</string>
     <string name="bypass_digest">禁用 APK 签名验证</string>
