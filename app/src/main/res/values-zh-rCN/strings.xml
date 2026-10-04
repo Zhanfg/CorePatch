@@ -63,6 +63,8 @@
     <string name="disable_overlay_validation">禁用 Overlay 验证</string>
     <string name="disable_overlay_validation_summary">跳过 Android 17 PackageManager 安装阶段的 RRO Overlay 合法性检查。</string>
     <string name="disable_overlay_validation_warning">这里只绕过 PackageManager 的安装阶段校验；OverlayManager/idmap 后续策略仍可能拒绝或忽略无效 Overlay。</string>
+    <string name="disable_domain_verification">禁用应用域名验证</string>
+    <string name="disable_domain_verification_summary">停止向 App Links 域名验证代理发送自动验证请求，同时保留已有验证状态和用户手动设置的链接打开选择。</string>
     <string name="bypass_block">绕过黑名单</string>
     <string name="bypass_block_summary">绕过某些设备如 Nothing Phone 上的黑名单</string>
     <string name="module_description">软件包管理服务修改</string>
