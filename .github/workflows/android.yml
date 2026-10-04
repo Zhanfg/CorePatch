@@ -290,6 +290,8 @@ jobs:
         } | tee modern-signatures/README.txt
 
         rm -f modern-signatures/key-old.jks modern-signatures/key-new.jks modern-signatures/lineage.bin
+        cp test-fixtures/CorePatch_ModernSignatureTest_v1.sh modern-signatures/
+        chmod +x modern-signatures/CorePatch_ModernSignatureTest_v1.sh
 
     - name: Upload modern signature fixtures
       uses: actions/upload-artifact@v4
