@@ -718,6 +718,11 @@ class MainActivity : Activity() {
                 Config.DISABLE_OVERLAY_VALIDATION,
                 getString(R.string.disable_overlay_validation_warning),
             ),
+            SwitchData(
+                getString(R.string.disable_domain_verification),
+                getString(R.string.disable_domain_verification_summary),
+                Config.DISABLE_DOMAIN_VERIFICATION,
+            ),
         )
 
         return listOf(
