@@ -24,6 +24,7 @@ object DomainVerificationHook : BaseHook() {
         methods.forEach { method ->
             hookBefore(method) { callback ->
                 if (Config.isDomainVerificationDisabled()) {
+                    log("[" + name + "] blocked App Links verification broadcast")
                     callback.returnAndSkip(null)
                 }
             }

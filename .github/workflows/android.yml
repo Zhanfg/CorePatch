@@ -58,7 +58,10 @@ jobs:
           :test-fixtures:app:assembleV3Release \
           :test-fixtures:app:assembleV4Release \
           :test-fixtures:shared:assembleARelease \
-          :test-fixtures:shared:assembleBRelease
+          :test-fixtures:shared:assembleBRelease \
+          :test-fixtures:domain:assembleRelease \
+          :test-fixtures:overlaytarget:assembleRelease \
+          :test-fixtures:overlay:assembleRelease
 
     - name: Generate isolated signing identities
       run: |
@@ -90,6 +93,9 @@ jobs:
         V4="$(find_one test-fixtures/app/build/outputs/apk/v4/release)"
         SA="$(find_one test-fixtures/shared/build/outputs/apk/a/release)"
         SB="$(find_one test-fixtures/shared/build/outputs/apk/b/release)"
+        DOMAIN="$(find_one test-fixtures/domain/build/outputs/apk/release)"
+        OVERLAY_TARGET="$(find_one test-fixtures/overlaytarget/build/outputs/apk/release)"
+        OVERLAY="$(find_one test-fixtures/overlay/build/outputs/apk/release)"
 
         SCHEME_REPORT="functional-suite/signing-schemes.txt"
         : > "$SCHEME_REPORT"
@@ -117,6 +123,9 @@ jobs:
         sign_apk "$V4" key-b.jks keyB functional-suite/apks/signed-gen4-keyB.apk
         sign_apk "$SA" key-a.jks keyA functional-suite/apks/shared-a-keyA.apk
         sign_apk "$SB" key-b.jks keyB functional-suite/apks/shared-b-keyB.apk
+        sign_apk "$DOMAIN" key-a.jks keyA functional-suite/apks/domain-autoverify-keyA.apk
+        sign_apk "$OVERLAY_TARGET" key-a.jks keyA functional-suite/apks/overlay-target-keyA.apk
+        sign_apk "$OVERLAY" key-b.jks keyB functional-suite/apks/overlay-invalid-keyB.apk
 
         echo "NOTE: genN is the app version generation, not APK Signature Scheme vN." >> "$SCHEME_REPORT"
         echo "Ordinary fixtures intentionally disable APK Signature Scheme v4; modern v3.2/v4.1 fixtures are built separately." >> "$SCHEME_REPORT"
@@ -133,9 +142,11 @@ jobs:
 
         cp test-fixtures/CorePatch_FunctionalTest_v3.sh functional-suite/
         cp test-fixtures/CorePatch_OShinPortSmoke_v1.sh functional-suite/
+        cp test-fixtures/CorePatch_OShinFunctional_v1.sh functional-suite/
         cp test-fixtures/README.md functional-suite/
         chmod +x functional-suite/CorePatch_FunctionalTest_v3.sh
         chmod +x functional-suite/CorePatch_OShinPortSmoke_v1.sh
+        chmod +x functional-suite/CorePatch_OShinFunctional_v1.sh
 
     - name: Upload functional test suite
       uses: actions/upload-artifact@v4

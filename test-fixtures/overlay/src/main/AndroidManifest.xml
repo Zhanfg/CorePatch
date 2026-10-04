@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:hasCode="false"
+        android:label="CorePatch Invalid Overlay" />
+    <overlay
+        android:targetPackage="dev.axymorrsen.corepatch.overlaytarget"
+        android:isStatic="false"
+        android:priority="1" />
+</manifest>

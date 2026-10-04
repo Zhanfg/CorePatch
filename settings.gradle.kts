@@ -23,3 +23,6 @@ include(":app")
 
 include(":test-fixtures:app")
 include(":test-fixtures:shared")
+include(":test-fixtures:domain")
+include(":test-fixtures:overlaytarget")
+include(":test-fixtures:overlay")
