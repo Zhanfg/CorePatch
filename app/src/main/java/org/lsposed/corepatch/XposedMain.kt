@@ -15,6 +15,7 @@ import org.lsposed.corepatch.hook.MessageDigestHook
 import org.lsposed.corepatch.hook.NtConfigListServiceImplHook
 import org.lsposed.corepatch.hook.PackageManagerServiceHook
 import org.lsposed.corepatch.hook.PackageManagerServiceUtilsHook
+import org.lsposed.corepatch.hook.PmsDebugCommandHook
 import org.lsposed.corepatch.hook.ReconcilePackageUtilsHook
 import org.lsposed.corepatch.hook.ScanPackageUtilsHook
 import org.lsposed.corepatch.hook.SharedUserSettingHook
@@ -95,6 +96,7 @@ class XposedMain : XposedModule() {
             NtConfigListServiceImplHook,
             PackageManagerServiceHook,
             PackageManagerServiceUtilsHook,
+            PmsDebugCommandHook,
             ReconcilePackageUtilsHook,
             ScanPackageUtilsHook,
             SharedUserSettingHook,
