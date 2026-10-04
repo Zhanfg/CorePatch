@@ -53,6 +53,9 @@
     <string name="bypass_developer_verification_warning">This disables the Android Developer Verifier install gate. Enable it only for packages you intentionally trust.</string>
     <string name="pms_debug_command">Enable PMS diagnostic command</string>
     <string name="pms_debug_command_summary">Adds pm pms package/uid/shareduser commands for signing, UID, shared-user and installer diagnostics.</string>
+    <string name="disable_overlay_validation">Disable overlay validation</string>
+    <string name="disable_overlay_validation_summary">Skip PackageManager's install-time RRO overlay validation on Android 17.</string>
+    <string name="disable_overlay_validation_warning">This only bypasses the PackageManager install-time overlay checks. OverlayManager/idmap policy may still reject or ignore an invalid overlay.</string>
     <string name="bypass_block">Bypass installation blocklist</string>
     <string name="bypass_block_summary">Bypass blocklists on devices such as Nothing Phone.</string>
     <string name="hide_launcher_icon">Hide launcher icon</string>
