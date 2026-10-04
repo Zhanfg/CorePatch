@@ -17,6 +17,19 @@ object InstallPackageHelperHook : BaseHook() {
 
         val installPackageHelperClazz =
             hostClassLoader.loadClass("com.android.server.pm.InstallPackageHelper")
+
+        HookResolver.findMethod(
+            installPackageHelperClazz,
+            "assertOverlayIsValid"
+        ) { method ->
+            method.returnType == Void.TYPE && method.parameterCount == 3
+        }?.let { method ->
+            org.lsposed.corepatch.XposedHelper.hookBefore(method) { callback ->
+                if (Config.isDisableOverlayValidationEnabled()) {
+                    callback.returnAndSkip(null)
+                }
+            }
+        }
         val doesSignatureMatchForPermissionsMethod = HookResolver.findMethod(
             installPackageHelperClazz,
             "doesSignatureMatchForPermissions"
