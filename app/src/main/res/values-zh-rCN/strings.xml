@@ -11,6 +11,10 @@
     <string name="hot_reload_diagnostics_idle">框架 API：%1$s · 尚未测试</string>
     <string name="hot_reload_test">立即测试 Hot Reload</string>
     <string name="hot_reload_checking">正在读取 API 102 目标进程…</string>
+    <string name="hot_reload_already_running">热重载正在进行，请稍候…</string>
+    <string name="hot_reload_up_to_date">目标 %1$s 已是最新 · 已加载版本=%2$s · 当前版本=%3$s，无需再次热重载。</string>
+    <string name="hot_reload_failed_state">目标 %1$s 当前为 FAILED · 已加载版本=%2$s · 当前版本=%3$s。请先刷新/重启目标进程后再试，避免重复强制提交。</string>
+    <string name="hot_reload_unknown_state">未知热重载状态：%1$s。已取消本次请求。</string>
     <string name="hot_reload_no_system_target">框架没有返回 system_server 目标。当前目标：%1$s</string>
     <string name="hot_reload_target_summary">目标 %1$s · 状态=%2$s · 已加载版本=%3$s · 当前版本=%4$s\n正在提交热重载请求…</string>
     <string name="hot_reload_result">目标 %1$s · 状态=%2$s · 已加载版本=%3$s · 当前版本=%4$s\n结果：%5$s\n%6$s</string>
