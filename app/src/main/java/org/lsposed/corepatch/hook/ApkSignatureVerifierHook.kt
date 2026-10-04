@@ -180,8 +180,10 @@ object ApkSignatureVerifierHook : BaseHook() {
                                     } finally {
                                         runCatching { closeMethod.invoke(originalJarFile) }
                                     }
-                                } catch (t: Throwable) {
-                                    log("Unexpected error while parsing signatures", t)
+                                } catch (_: Throwable) {
+                                    // Modern v2/v3/v3.1/v3.2 APKs commonly have no JAR/v1
+                                    // certificate path. Treat that as an expected fallback miss.
+                                    log("V1 certificate fallback unavailable; continuing modern/synthetic recovery")
                                 }
                             }
 
