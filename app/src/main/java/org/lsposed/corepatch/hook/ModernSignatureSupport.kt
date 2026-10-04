@@ -37,6 +37,7 @@ object ModernSignatureSupport {
         )
 
         if (Build.VERSION.SDK_INT >= 37) {
+            installV4ToV3Fallback(apkSignatureVerifierClazz)
             logAndroid17Surface()
             installModernResultDiagnostics(apkSignatureVerifierClazz)
         }
@@ -101,17 +102,25 @@ object ModernSignatureSupport {
                         }
 
                         signing.scheme == SIGNING_BLOCK_V4 -> {
-                            val blocks = apkPath?.let(::readV4SigningInfoBlocks).orEmpty()
-                            val label = if (blocks.isNotEmpty()) "v4.1-layout" else "v4"
+                            val layout = apkPath?.let(::readV4Layout)
+                            val label = if (layout?.extraBlocks?.isNotEmpty() == true) "v4.1" else "v4"
+                            var detail = ""
+                            layout?.backingV3BlockId?.let {
+                                detail += " backing=" + formatBlockId(it)
+                            }
+                            layout?.selectedExtraBlockId?.let {
+                                detail += " selected=" + formatBlockId(it)
+                            }
+                            if (layout?.extraBlocks?.isNotEmpty() == true) {
+                                detail += " extraBlocks=" + layout.extraBlocks.joinToString(",") {
+                                    formatBlockId(it)
+                                }
+                            }
                             log(
-                                "[ModernSignature] $label accepted" +
-                                    if (blocks.isNotEmpty()) {
-                                        " signingInfoBlocks=${blocks.joinToString(",") { formatBlockId(it) }}"
-                                    } else {
-                                        ""
-                                    } +
-                                    " path=${apkPath ?: "<unknown>"}"
+                                "[ModernSignature] " + label + " accepted" + detail +
+                                    " path=" + (apkPath ?: "<unknown>")
                             )
+                        }
                         }
                     }
                 }
@@ -124,6 +133,61 @@ object ModernSignatureSupport {
         val minor: Int,
     )
 
+    private data class V4Layout(
+        val backingV3BlockId: Int?,
+        val extraBlocks: List<Int>,
+        val selectedExtraBlockId: Int?,
+    )
+
+    /**
+     * V4 is an auxiliary signature layer over v2/v3. If a v4/v4.1 sidecar is present but
+     * PackageManager cannot use it, CorePatch may recover through the APK's certificate-only
+     * v3/v2 chain instead of letting the auxiliary layer make the whole install fail.
+     *
+     * This does not bypass IncFS/kernel Merkle-tree enforcement.
+     */
+    private fun installV4ToV3Fallback(apkSignatureVerifierClazz: Class<*>) {
+        val fallbackMethod = apkSignatureVerifierClazz.declaredMethods.firstOrNull { method ->
+            method.name == "verifyV3AndBelowSignatures" &&
+                method.parameterCount == 4 &&
+                method.parameterTypes[1] == String::class.java &&
+                method.parameterTypes[2] == Int::class.javaPrimitiveType &&
+                method.parameterTypes[3] == Boolean::class.javaPrimitiveType
+        }?.apply { isAccessible = true } ?: return
+
+        HookResolver.findMethods(apkSignatureVerifierClazz, "verifyV4Signature") { method ->
+            method.parameterCount == 4 && method.parameterTypes[1] == String::class.java
+        }.forEach { method ->
+            hookAfter(method) { callback ->
+                if (!Config.isBypassVerificationEnabled()) return@hookAfter
+                if (callback.throwable != null) return@hookAfter
+
+                val original = callback.result ?: return@hookAfter
+                if (!isParseResultError(original)) return@hookAfter
+
+                val input = callback.args.getOrNull(0) ?: return@hookAfter
+                val apkPath = callback.args.getOrNull(1) as? String ?: return@hookAfter
+                val recovered = runCatching {
+                    fallbackMethod.invoke(null, input, apkPath, 0, false)
+                }.getOrNull() ?: return@hookAfter
+
+                if (isParseResultError(recovered)) return@hookAfter
+                callback.result = recovered
+                callback.throwable = null
+                log(
+                    "[ModernSignature] v4/v4.1 error recovered via " +
+                        labelV3Block(readV3BlockId(apkPath)) + " certificate-only path"
+                )
+            }
+        }
+    }
+
+    private fun isParseResultError(value: Any): Boolean {
+        val method = value.javaClass.methods.firstOrNull {
+            it.name == "isError" && it.parameterCount == 0
+        } ?: return false
+        return runCatching { method.invoke(value) as Boolean }.getOrDefault(false)
+    }
     private fun readSigningState(raw: Any?): SigningState? {
         var value = raw ?: return null
 
@@ -176,26 +240,25 @@ object ModernSignatureSupport {
         return runCatching { field.getInt(signer) }.getOrNull()
     }
 
-    private fun readV4SigningInfoBlocks(apkPath: String): List<Int> {
+    private fun readV4Layout(apkPath: String): V4Layout? {
         val verifier = findClassIfExists("android.util.apk.ApkSignatureSchemeV4Verifier")
-            ?: return emptyList()
+            ?: return null
         val extract = verifier.declaredMethods.firstOrNull {
             it.name == "extractSignature" &&
                 it.parameterCount == 1 &&
                 it.parameterTypes[0] == String::class.java
-        }?.apply { isAccessible = true } ?: return emptyList()
+        }?.apply { isAccessible = true } ?: return null
 
-        val pair = runCatching { extract.invoke(null, apkPath) }.getOrNull()
-            ?: return emptyList()
+        val pair = runCatching { extract.invoke(null, apkPath) }.getOrNull() ?: return null
         val signingInfos = runCatching {
             pair.javaClass.getField("second").get(pair)
-        }.getOrNull() ?: return emptyList()
+        }.getOrNull() ?: return null
         val blocks = runCatching {
             signingInfos.javaClass.getField("signingInfoBlocks").get(signingInfos)
-        }.getOrNull() ?: return emptyList()
+        }.getOrNull() ?: return null
 
-        val count = runCatching { ReflectArray.getLength(blocks) }.getOrDefault(0)
-        return buildList {
+        val extraBlocks = buildList {
+            val count = runCatching { ReflectArray.getLength(blocks) }.getOrDefault(0)
             for (index in 0 until count) {
                 val block = ReflectArray.get(blocks, index) ?: continue
                 val blockId = runCatching {
@@ -204,8 +267,14 @@ object ModernSignatureSupport {
                 add(blockId)
             }
         }
-    }
 
+        val backingV3BlockId = readV3BlockId(apkPath)
+        val selectedExtraBlockId = backingV3BlockId
+            ?.takeUnless { it == APK_SIGNATURE_SCHEME_V3_BLOCK_ID }
+            ?.takeIf { it in extraBlocks }
+
+        return V4Layout(backingV3BlockId, extraBlocks, selectedExtraBlockId)
+    }
     private fun labelV3Block(blockId: Int?): String = when (blockId) {
         APK_SIGNATURE_SCHEME_V3_BLOCK_ID -> "v3.0"
         APK_SIGNATURE_SCHEME_V31_BLOCK_ID -> "v3.1"
