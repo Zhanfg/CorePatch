@@ -642,6 +642,26 @@ class MainActivity : Activity() {
                 Config.BYPASS_VERIFICATION,
             ),
             SwitchData(
+                getString(R.string.disable_jar_verifier),
+                getString(R.string.disable_jar_verifier_summary),
+                Config.DISABLE_JAR_VERIFIER,
+            ),
+            SwitchData(
+                getString(R.string.disable_message_digest),
+                getString(R.string.disable_message_digest_summary),
+                Config.DISABLE_MESSAGE_DIGEST,
+            ),
+            SwitchData(
+                getString(R.string.bypass_min_signature_version),
+                getString(R.string.bypass_min_signature_version_summary),
+                Config.BYPASS_MIN_SIGNATURE_VERSION,
+            ),
+            SwitchData(
+                getString(R.string.bypass_v1_signature_errors),
+                getString(R.string.bypass_v1_signature_errors_summary),
+                Config.BYPASS_V1_SIGNATURE_ERRORS,
+            ),
+            SwitchData(
                 getString(R.string.bypass_digest),
                 getString(R.string.bypass_digest_summary),
                 Config.BYPASS_DIGEST,
