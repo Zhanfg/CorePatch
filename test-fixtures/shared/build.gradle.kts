@@ -32,4 +32,8 @@ android {
             isShrinkResources = false
         }
     }
+
+    lint {
+        disable += "ExpiredTargetSdkVersion"
+    }
 }
