@@ -37,6 +37,14 @@
     <string name="disable_verification_agent">Disable Package Verification Agent</string>
     <string name="bypass_downgrade_summary">Allow installing an older version over a newer version.</string>
     <string name="bypass_verification_summary">Allow installing APKs with invalid or modified signatures.</string>
+    <string name="disable_jar_verifier">Disable JAR signature verification</string>
+    <string name="disable_jar_verifier_summary">Independently bypass legacy v1 JAR digest checks and signature rollback protection. The main verification bypass also implies this option.</string>
+    <string name="disable_message_digest">Disable MessageDigest comparison</string>
+    <string name="disable_message_digest_summary">Independently make framework MessageDigest equality checks pass. The main verification bypass also implies this option.</string>
+    <string name="bypass_min_signature_version">Bypass minimum signature scheme</string>
+    <string name="bypass_min_signature_version_summary">Allow packages whose target SDK normally requires a newer APK signature scheme. The main verification bypass also implies this option.</string>
+    <string name="bypass_v1_signature_errors">Recover v1 signature error -103</string>
+    <string name="bypass_v1_signature_errors_summary">Recover INSTALL_PARSE_FAILED_NO_CERTIFICATES from the legacy v1 verifier without enabling the full verification bypass.</string>
     <string name="bypass_resource_arsc_restrictions">Bypass resources.arsc alignment restriction</string>
     <string name="bypass_resource_arsc_restrictions_summary">Allow installing APKs whose resources.arsc is compressed or not 4-byte aligned on Android 11 and later.</string>
     <string name="bypass_digest_summary">Allow reinstalling an app with a different signature.</string>
